@@ -5,3 +5,5 @@ access_pharma_prescription_line_user,pharma.prescription.line.user,model_pharma_
 access_pharma_prescription_fee_user,pharma.prescription.fee.user,model_pharma_prescription_fee,pharma_fr_base.group_pharma_user,1,1,1,1
 access_pharma_fee_rule_user,pharma.fee.rule.user,model_pharma_fee_rule,pharma_fr_base.group_pharma_user,1,0,0,0
 access_pharma_fee_rule_manager,pharma.fee.rule.manager,model_pharma_fee_rule,pharma_fr_base.group_pharma_manager,1,1,1,1
+access_pharma_missing_item_user,pharma.missing.item.user,model_pharma_missing_item,pharma_fr_base.group_pharma_user,1,1,1,0
+access_pharma_missing_item_manager,pharma.missing.item.manager,model_pharma_missing_item,pharma_fr_base.group_pharma_manager,1,1,1,1

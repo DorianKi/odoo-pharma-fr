@@ -9,6 +9,8 @@
               action="action_pharma_prescriber" sequence="30"/>
     <menuitem id="menu_pharma_insurer" name="Organismes payeurs" parent="menu_pharma_dispensation"
               action="action_pharma_insurer" sequence="40"/>
+    <menuitem id="menu_pharma_missing_item" name="Manquants" parent="menu_pharma_dispensation"
+              action="action_pharma_missing_item" sequence="45"/>
     <menuitem id="menu_pharma_prescription_line" name="Analyse des délivrances" parent="menu_pharma_dispensation"
               action="action_pharma_prescription_line" sequence="50"
               groups="pharma_fr_base.group_pharma_manager"/>

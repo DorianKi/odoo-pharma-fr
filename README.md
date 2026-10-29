@@ -144,6 +144,12 @@ comme prix fabricant HT. La loi l'apprécie par année civile et par ligne de pr
   - **une facture par payeur** (AMO, AMC, patient), comptabilisée avec la TVA de chaque
     article (2,1 % sur les médicaments remboursables et les honoraires) ;
   - **coût d'achat et marge brute** enregistrés par ligne.
+- **Facturation** : une facture par payeur et par ordonnance, ou **bordereaux
+  journaliers** (une facture par organisme et par jour, parts patients regroupées comme
+  un ticket Z de caisse), selon un réglage de la société.
+- **Manquants** : demandes non servies (vente perdue, délivrance différée, produit
+  remplacé), avec leur motif (stock de l'officine, rupture nationale, fournisseur) et le
+  montant non servi.
 - **Analyse** : vues tableau croisé et graphique du chiffre d'affaires, des honoraires
   et de la marge, par jour, article ou prescripteur.
 
@@ -177,6 +183,43 @@ général : le régime local d'Alsace-Moselle n'est pas modélisé.
 
 Le registre compte les quantités en boîtes (unité de l'article). Un registre tenu en
 unités de prise demanderait une unité de mesure dédiée par article.
+
+## Données de démonstration
+
+`scripts/generate_demo_data.py` simule plusieurs mois d'activité d'une officine
+parisienne. Il s'exécute dans le shell Odoo, sur une base où les modules sont installés
+et la BDPM importée :
+
+```bash
+docker compose exec -T odoo odoo shell -d pharmacie --no-http \
+    --db_host=db --db_user=odoo --db_password=odoo < scripts/generate_demo_data.py
+```
+
+Options : `-e DEMO_DAYS=90` (durée), `-e DEMO_SCALE=1.5` (volume d'activité),
+`-e DEMO_SEED=42` (reproductibilité).
+
+**Fonctionnement**
+- L'horloge d'Odoo est simulée (freezegun) : stock, factures, registres et ordonnancier
+  portent les dates simulées.
+- Le script met en place l'assortiment (molécules courantes : princeps et génériques,
+  conseils, parapharmacie), les grossistes et le génériqueur, les conditions
+  commerciales, 800 patients fictifs (NIR valides), des prescripteurs et le stock
+  d'ouverture.
+- Chaque jour d'ouverture, il simule :
+  - les réceptions et la commande de réassort ;
+  - les renouvellements des patients chroniques, les ordonnances ponctuelles et les
+    ventes au comptoir ;
+  - les dépannages et les manquants ;
+  - les retours, la destruction des périmés et les bordereaux de facturation.
+- **Problèmes introduits volontairement** pour l'analyse :
+  - surstock (commandes directes trop généreuses, produits dormants) ;
+  - péremptions ;
+  - ruptures nationales mal livrées ;
+  - dépannages chez le second grossiste, plus chers ;
+  - substitution générique freinée par un prescripteur ;
+  - commandes sous le franco.
+
+Toutes les personnes et organismes privés sont fictifs. Les coûts d'achat sont estimés.
 
 ## Installation
 

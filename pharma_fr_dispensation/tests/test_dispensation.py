@@ -166,3 +166,34 @@ class TestDispensation(PharmaDispensationCase):
         rx.action_dispense()
         with self.assertRaises(UserError):
             rx.action_cancel()
+
+    def test_missing_item(self):
+        item = self.env["pharma.missing.item"].create({
+            "product_id": self.amox.id, "quantity": 2, "unit_price": 3.52,
+            "reason": "national_shortage", "patient_id": self.patient.id,
+        })
+        self.assertAlmostEqual(item.amount_lost, 7.04)
+
+    def test_daily_invoicing(self):
+        counter = self.env["res.partner"].create({"name": "Encaissements comptoir"})
+        self.env.company.write({
+            "pharma_invoicing_mode": "daily", "pharma_counter_partner_id": counter.id,
+        })
+        rx1 = self._prescription(lines=[(self.princeps, 2)])
+        rx2 = self._prescription(patient=self.senior, lines=[(self.amox, 1)])
+        (rx1 | rx2).action_dispense()
+        self.assertFalse(rx1.invoice_ids)
+        moves = self.env["pharma.prescription"]._pharma_invoice_pending()
+        # Un bordereau AMO commun, la mutuelle de la patiente, les encaissements comptoir
+        self.assertEqual(set(moves.partner_id.ids), {self.cpam.id, self.mutuelle.id, counter.id})
+        amo = moves.filtered(lambda m: m.partner_id == self.cpam)
+        self.assertAlmostEqual(amo.amount_total, rx1.amount_amo + rx2.amount_amo, places=2)
+        self.assertIn(amo, rx1.invoice_ids)
+        self.assertIn(amo, rx2.invoice_ids)
+        self.assertTrue(rx1.pharma_invoiced and rx2.pharma_invoiced)
+        self.assertAlmostEqual(sum(moves.mapped("amount_total")), rx1.amount_total + rx2.amount_total,
+                               places=2)
+        self.assertFalse(self.env["pharma.prescription"]._pharma_invoice_pending())
+        refunds = rx2._pharma_create_refunds("test")
+        self.assertAlmostEqual(sum(refunds.mapped("amount_total")), rx2.amount_total, places=2)
+        self.assertEqual(set(refunds.mapped("move_type")), {"out_refund"})

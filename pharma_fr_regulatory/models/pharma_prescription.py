@@ -44,15 +44,8 @@ class PharmaPrescription(models.Model):
             self._pharma_create_return_picking()
             if not restock:
                 self._pharma_destroy_returned()
-        if self.invoice_ids:
-            refunds = self.invoice_ids._reverse_moves(
-                default_values_list=[
-                    {"ref": f"Retour {self.name} : {reason}", "invoice_date": fields.Date.today()}
-                    for _invoice in self.invoice_ids
-                ],
-            )
-            refunds.action_post()
-            self.refund_ids = refunds
+        if self.pharma_invoiced:
+            self.refund_ids = self._pharma_create_refunds(reason)
         self.write({"state": "returned", "return_reason": reason})
         self.message_post(body=f"Retour patient : {reason}"
                           + (" (remise en stock)" if restock else " (destruction)"))

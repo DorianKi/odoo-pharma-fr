@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_pharma_missing_item_list" model="ir.ui.view">
+        <field name="name">pharma.missing.item.list</field>
+        <field name="model">pharma.missing.item</field>
+        <field name="arch" type="xml">
+            <list string="Manquants" editable="top">
+                <field name="currency_id" column_invisible="1"/>
+                <field name="date"/>
+                <field name="product_id"/>
+                <field name="quantity" sum="Unités"/>
+                <field name="reason"/>
+                <field name="outcome"/>
+                <field name="patient_id" optional="show"/>
+                <field name="prescription_id" optional="hide"/>
+                <field name="unit_price" optional="hide"/>
+                <field name="amount_lost" sum="Total"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_pharma_missing_item_search" model="ir.ui.view">
+        <field name="name">pharma.missing.item.search</field>
+        <field name="model">pharma.missing.item</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="product_id"/>
+                <field name="patient_id"/>
+                <filter name="lost" string="Ventes perdues" domain="[('outcome', '=', 'lost')]"/>
+                <filter name="national" string="Ruptures nationales" domain="[('reason', '=', 'national_shortage')]"/>
+                <filter name="date" string="Date" date="date"/>
+                <filter name="group_product" string="Article" context="{'group_by': 'product_id'}"/>
+                <filter name="group_reason" string="Motif" context="{'group_by': 'reason'}"/>
+                <filter name="group_day" string="Jour" context="{'group_by': 'date:day'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_pharma_missing_item_pivot" model="ir.ui.view">
+        <field name="name">pharma.missing.item.pivot</field>
+        <field name="model">pharma.missing.item</field>
+        <field name="arch" type="xml">
+            <pivot string="Manquants">
+                <field name="reason" type="row"/>
+                <field name="date" interval="month" type="col"/>
+                <field name="amount_lost" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="action_pharma_missing_item" model="ir.actions.act_window">
+        <field name="name">Manquants</field>
+        <field name="res_model">pharma.missing.item</field>
+        <field name="view_mode">list,pivot</field>
+        <field name="help" type="html">
+            <p>Demandes non servies : ventes perdues, délivrances différées ou produits
+               remplacés, avec le motif (stock de l'officine, rupture nationale, fournisseur).</p>
+        </field>
+    </record>
+</odoo>

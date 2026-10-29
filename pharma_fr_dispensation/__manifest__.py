@@ -3,7 +3,7 @@
     "summary": "Dispensation sur ordonnance : patients (NIR, AMO, AMC, ALD, C2S), "
                "prescripteurs (RPPS), tiers payant, honoraires de dispensation, "
                "substitution générique, sortie de stock FEFO et facturation par payeur",
-    "version": "19.0.1.0.0",
+    "version": "19.0.1.2.0",
     "category": "Inventory/Pharmacy",
     "author": "Dorian Kihouba",
     "website": "https://github.com/DorianKi/odoo-pharma-fr",
@@ -18,9 +18,12 @@
         "data/ir_sequence_data.xml",
         "data/product_data.xml",
         "data/pharma_fee_rule_data.xml",
+        "data/ir_cron_data.xml",
+        "views/res_company_views.xml",
         "views/res_partner_views.xml",
         "views/pharma_fee_rule_views.xml",
         "views/pharma_prescription_views.xml",
+        "views/pharma_missing_item_views.xml",
         "views/pharma_dispensation_menus.xml",
     ],
     "post_init_hook": "post_init_hook",

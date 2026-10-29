@@ -68,6 +68,7 @@ class PharmaPrescription(models.Model):
     )
     picking_id = fields.Many2one("stock.picking", string="Sortie de stock", copy=False)
     invoice_ids = fields.Many2many("account.move", string="Factures", copy=False)
+    pharma_invoiced = fields.Boolean("Facturée", copy=False, index=True)
     invoice_count = fields.Integer(compute="_compute_invoice_count")
     note = fields.Text("Notes")
 
@@ -250,7 +251,8 @@ class PharmaPrescription(models.Model):
             rx._pharma_recompute_fees()
             rx._pharma_check_before_dispensing()
             rx._pharma_create_picking()
-            rx._pharma_create_invoices()
+            if rx.company_id.pharma_invoicing_mode == "per_prescription":
+                rx._pharma_create_invoices()
             rx.state = "done"
         return True
 
@@ -355,32 +357,99 @@ class PharmaPrescription(models.Model):
                 }))
         return vals
 
-    def _pharma_create_invoices(self):
+    def _pharma_payer_partner(self, payer):
+        """Partenaire facturé pour une part ('amo', 'amc', 'patient')."""
         self.ensure_one()
-        payers = {
-            "amo": self.patient_id.pharma_amo_id,
-            "amc": self.patient_id.pharma_amc_id,
-            "patient": self.patient_id,
-        }
-        self.env["product.template"].with_company(self.company_id)._pharma_ensure_fee_taxes()
-        moves = self.env["account.move"]
-        for payer, partner in payers.items():
-            lines = self._pharma_invoice_lines(payer)
-            if not lines:
-                continue
-            if not partner:
-                raise UserError(f"Organisme payeur manquant pour la part {payer.upper()}.")
-            moves |= self.env["account.move"].create({
-                "move_type": "out_invoice",
-                "company_id": self.company_id.id,
+        patient = self.patient_id
+        if payer == "amo":
+            return patient.pharma_amo_id
+        if payer == "amc":
+            return patient.pharma_amc_id
+        company = self.company_id
+        if company.pharma_invoicing_mode == "daily" and company.pharma_counter_partner_id:
+            return company.pharma_counter_partner_id
+        return patient
+
+    def _pharma_moves_by_payer(self, move_type, ref_label):
+        """Prépare une pièce (facture ou avoir) par partenaire payeur, en regroupant
+        les ordonnances de ``self`` (toutes de la même société)."""
+        grouped = {}
+        for rx in self:
+            for payer in ("amo", "amc", "patient"):
+                lines = rx._pharma_invoice_lines(payer)
+                if not lines:
+                    continue
+                partner = rx._pharma_payer_partner(payer)
+                if not partner:
+                    raise UserError(
+                        f"Organisme payeur manquant pour la part {payer.upper()} ({rx.name})."
+                    )
+                entry = grouped.setdefault(partner, {"lines": [], "rx": self.browse()})
+                entry["lines"] += lines
+                entry["rx"] |= rx
+        vals_list = []
+        for partner, entry in grouped.items():
+            prescriptions = entry["rx"]
+            names = prescriptions.mapped("name")
+            vals_list.append({
+                "move_type": move_type,
+                "company_id": prescriptions[:1].company_id.id,
                 "partner_id": partner.id,
-                "invoice_date": fields.Date.to_date(self.dispensing_date),
-                "invoice_origin": f"{self.name} - {self.patient_id.name}",
-                "ref": f"{self.name} ({payer.upper()})",
-                "invoice_line_ids": lines,
+                "invoice_date": max(fields.Date.to_date(d) for d in prescriptions.mapped("dispensing_date")),
+                "invoice_origin": ", ".join(names) if len(names) <= 3 else f"{len(names)} ordonnances",
+                "ref": ref_label,
+                "invoice_line_ids": entry["lines"],
             })
+        return vals_list, grouped
+
+    def _pharma_create_invoices(self):
+        """Facture chaque payeur. Appelée sur une ordonnance (facturation à l'acte) ou
+        sur les ordonnances d'une journée (bordereaux journaliers)."""
+        if not self:
+            return self.env["account.move"]
+        company = self[:1].company_id
+        self.env["product.template"].with_company(company)._pharma_ensure_fee_taxes()
+        label = self.name if len(self) == 1 else (
+            f"Bordereau du {fields.Date.to_date(self[:1].dispensing_date):%d/%m/%Y}"
+        )
+        vals_list, grouped = self._pharma_moves_by_payer("out_invoice", label)
+        moves = self.env["account.move"].create(vals_list)
         moves.action_post()
-        self.invoice_ids = moves
+        for move, entry in zip(moves, grouped.values(), strict=True):
+            for rx in entry["rx"]:
+                rx.invoice_ids = [Command.link(move.id)]
+        self.pharma_invoiced = True
+        return moves
+
+    def _pharma_create_refunds(self, reason):
+        """Avoirs couvrant les parts facturées de l'ordonnance (retour patient)."""
+        self.ensure_one()
+        vals_list, _grouped = self._pharma_moves_by_payer("out_refund", f"Retour {self.name} : {reason}")
+        for vals in vals_list:
+            vals["invoice_date"] = fields.Date.context_today(self)
+        refunds = self.env["account.move"].create(vals_list)
+        refunds.action_post()
+        return refunds
+
+    @api.model
+    def _pharma_invoice_pending(self, until=None):
+        """Bordereaux journaliers : facture les ordonnances délivrées et non encore
+        facturées, jour par jour, pour les sociétés en mode journalier."""
+        until = until or fields.Datetime.now()
+        companies = self.env["res.company"].search([("pharma_invoicing_mode", "=", "daily")])
+        moves = self.env["account.move"]
+        for company in companies:
+            pending = self.search([
+                ("company_id", "=", company.id), ("state", "=", "done"),
+                ("pharma_invoiced", "=", False), ("dispensing_date", "<=", until),
+            ], order="dispensing_date")
+            by_day = {}
+            for rx in pending:
+                by_day.setdefault(fields.Date.to_date(rx.dispensing_date), self.browse())
+                by_day[fields.Date.to_date(rx.dispensing_date)] |= rx
+            for prescriptions in by_day.values():
+                moves |= prescriptions.with_company(company)._pharma_create_invoices()
+        return moves
 
     def action_cancel(self):
         if any(rx.state == "done" for rx in self):
