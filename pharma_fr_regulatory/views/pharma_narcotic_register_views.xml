@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_pharma_narcotic_register_list" model="ir.ui.view">
+        <field name="name">pharma.narcotic.register.list</field>
+        <field name="model">pharma.narcotic.register</field>
+        <field name="arch" type="xml">
+            <list string="Registre des stupéfiants" create="0" edit="0" delete="0"
+                  decoration-success="quantity_in" decoration-danger="kind == 'destruction'">
+                <field name="number"/>
+                <field name="date"/>
+                <field name="product_id"/>
+                <field name="kind"/>
+                <field name="reference" optional="show"/>
+                <field name="partner_id" optional="show"/>
+                <field name="prescriber_id" optional="show"/>
+                <field name="lot_names" optional="hide"/>
+                <field name="quantity_in" sum="Entrées"/>
+                <field name="quantity_out" sum="Sorties"/>
+                <field name="balance"/>
+                <field name="user_id" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_pharma_narcotic_register_form" model="ir.ui.view">
+        <field name="name">pharma.narcotic.register.form</field>
+        <field name="model">pharma.narcotic.register</field>
+        <field name="arch" type="xml">
+            <form string="Inscription au registre" create="0" edit="0" delete="0">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="number"/>
+                            <field name="date"/>
+                            <field name="product_id"/>
+                            <field name="kind"/>
+                            <field name="lot_names"/>
+                        </group>
+                        <group>
+                            <field name="quantity_in"/>
+                            <field name="quantity_out"/>
+                            <field name="balance"/>
+                            <field name="partner_id"/>
+                            <field name="prescriber_id"/>
+                            <field name="prescription_id"/>
+                            <field name="reference"/>
+                            <field name="user_id"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_pharma_narcotic_register_search" model="ir.ui.view">
+        <field name="name">pharma.narcotic.register.search</field>
+        <field name="model">pharma.narcotic.register</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="product_id"/>
+                <field name="partner_id"/>
+                <field name="prescriber_id"/>
+                <field name="lot_names"/>
+                <filter name="in" string="Entrées" domain="[('quantity_in', '>', 0)]"/>
+                <filter name="out" string="Sorties" domain="[('quantity_out', '>', 0)]"/>
+                <filter name="destruction" string="Destructions" domain="[('kind', '=', 'destruction')]"/>
+                <filter name="date" string="Date" date="date"/>
+                <filter name="group_product" string="Produit" context="{'group_by': 'product_id'}"/>
+                <filter name="group_month" string="Mois" context="{'group_by': 'date:month'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_pharma_narcotic_register" model="ir.actions.act_window">
+        <field name="name">Registre des stupéfiants</field>
+        <field name="res_model">pharma.narcotic.register</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_group_product': 1}</field>
+        <field name="help" type="html">
+            <p>Les entrées et sorties de stupéfiants sont inscrites automatiquement à la
+               validation des mouvements de stock (réceptions, délivrances, retours,
+               destructions, inventaires). Le registre ne peut être ni modifié ni supprimé.</p>
+        </field>
+    </record>
+</odoo>

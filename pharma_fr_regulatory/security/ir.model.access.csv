@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_pharma_narcotic_register_user,pharma.narcotic.register.user,model_pharma_narcotic_register,pharma_fr_base.group_pharma_user,1,0,0,0
+access_pharma_ordonnancier_user,pharma.ordonnancier.user,model_pharma_ordonnancier,pharma_fr_base.group_pharma_user,1,0,0,0
+access_pharma_expiry_scrap_wizard_manager,pharma.expiry.scrap.wizard.manager,model_pharma_expiry_scrap_wizard,pharma_fr_base.group_pharma_manager,1,1,1,1
+access_pharma_prescription_return_wizard_manager,pharma.prescription.return.wizard.manager,model_pharma_prescription_return_wizard,pharma_fr_base.group_pharma_manager,1,1,1,1

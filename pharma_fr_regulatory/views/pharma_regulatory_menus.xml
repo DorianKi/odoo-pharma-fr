@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_pharma_regulatory" name="Réglementaire" parent="pharma_fr_base.menu_pharma_root" sequence="40"/>
+    <menuitem id="menu_pharma_ordonnancier" name="Ordonnancier" parent="menu_pharma_regulatory"
+              action="action_pharma_ordonnancier" sequence="10"/>
+    <menuitem id="menu_pharma_narcotic_register" name="Registre des stupéfiants" parent="menu_pharma_regulatory"
+              action="action_pharma_narcotic_register" sequence="20"/>
+    <menuitem id="menu_pharma_expiry" name="Péremptions" parent="menu_pharma_regulatory"
+              action="action_pharma_expiry" sequence="30"/>
+    <menuitem id="menu_pharma_expiry_scrap" name="Destruction des périmés" parent="menu_pharma_regulatory"
+              action="action_pharma_expiry_scrap_wizard" sequence="40"
+              groups="pharma_fr_base.group_pharma_manager"/>
+</odoo>

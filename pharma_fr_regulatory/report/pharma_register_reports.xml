@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_report_narcotic_register" model="ir.actions.report">
+        <field name="name">Registre des stupéfiants</field>
+        <field name="model">pharma.narcotic.register</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">pharma_fr_regulatory.report_narcotic_register</field>
+        <field name="report_file">pharma_fr_regulatory.report_narcotic_register</field>
+        <field name="print_report_name">'Registre des stupéfiants'</field>
+        <field name="binding_model_id" ref="model_pharma_narcotic_register"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="base.paperformat_euro"/>
+    </record>
+
+    <record id="action_report_ordonnancier" model="ir.actions.report">
+        <field name="name">Ordonnancier</field>
+        <field name="model">pharma.ordonnancier</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">pharma_fr_regulatory.report_ordonnancier</field>
+        <field name="report_file">pharma_fr_regulatory.report_ordonnancier</field>
+        <field name="print_report_name">'Ordonnancier'</field>
+        <field name="binding_model_id" ref="model_pharma_ordonnancier"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="base.paperformat_euro"/>
+    </record>
+
+    <template id="report_narcotic_register">
+        <t t-call="web.html_container">
+            <t t-call="web.external_layout">
+                <div class="page">
+                    <h3>Registre des stupéfiants</h3>
+                    <t t-foreach="docs.mapped('product_id')" t-as="product">
+                        <h5 class="mt-4" t-out="product.display_name"/>
+                        <table class="table table-sm o_main_table">
+                            <thead>
+                                <tr>
+                                    <th>N°</th><th>Date</th><th>Nature</th><th>Pièce</th>
+                                    <th>Fournisseur / patient</th><th>Prescripteur</th><th>Lots</th>
+                                    <th class="text-end">Entrée</th><th class="text-end">Sortie</th>
+                                    <th class="text-end">Stock</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="docs.filtered(lambda r: r.product_id == product).sorted('number')" t-as="entry">
+                                    <td t-out="entry.number"/>
+                                    <td><span t-field="entry.date"/></td>
+                                    <td><span t-field="entry.kind"/></td>
+                                    <td t-out="entry.reference"/>
+                                    <td t-out="entry.partner_id.name"/>
+                                    <td t-out="entry.prescriber_id.name"/>
+                                    <td t-out="entry.lot_names"/>
+                                    <td class="text-end" t-out="entry.quantity_in or ''"/>
+                                    <td class="text-end" t-out="entry.quantity_out or ''"/>
+                                    <td class="text-end" t-out="entry.balance"/>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </t>
+                </div>
+            </t>
+        </t>
+    </template>
+
+    <template id="report_ordonnancier">
+        <t t-call="web.html_container">
+            <t t-call="web.external_layout">
+                <div class="page">
+                    <h3>Ordonnancier</h3>
+                    <table class="table table-sm o_main_table">
+                        <thead>
+                            <tr>
+                                <th>N°</th><th>Délivrance</th><th>Patient</th><th>Prescripteur</th>
+                                <th>Médicament</th><th>Liste</th><th class="text-end">Qté</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="docs.sorted('number')" t-as="entry">
+                                <td t-out="entry.number"/>
+                                <td><span t-field="entry.date"/></td>
+                                <td><t t-out="entry.patient_name"/><br/>
+                                    <small t-out="entry.patient_address"/></td>
+                                <td><t t-out="entry.prescriber_name"/><br/>
+                                    <small t-if="entry.prescriber_rpps">RPPS <t t-out="entry.prescriber_rpps"/></small></td>
+                                <td t-out="entry.product_name"/>
+                                <td><span t-field="entry.prescription_list"/></td>
+                                <td class="text-end" t-out="entry.quantity"/>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

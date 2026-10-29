@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="scrap_reason_expired" model="stock.scrap.reason.tag">
+        <field name="name">Périmé</field>
+        <field name="color">#C0392B</field>
+    </record>
+    <record id="scrap_reason_patient_return" model="stock.scrap.reason.tag">
+        <field name="name">Retour patient</field>
+        <field name="color">#D68910</field>
+    </record>
+</odoo>

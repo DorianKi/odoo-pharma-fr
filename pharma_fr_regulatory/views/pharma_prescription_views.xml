@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_pharma_prescription_form_regulatory" model="ir.ui.view">
+        <field name="name">pharma.prescription.form.regulatory</field>
+        <field name="model">pharma.prescription</field>
+        <field name="inherit_id" ref="pharma_fr_dispensation.view_pharma_prescription_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header/button[@name='action_cancel']" position="before">
+                <button name="action_open_return_wizard" type="object" string="Retour patient"
+                        invisible="state != 'done'" groups="pharma_fr_base.group_pharma_manager"/>
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="Réglementaire" name="regulatory" invisible="state == 'draft'">
+                    <field name="ordonnancier_ids">
+                        <list>
+                            <field name="number"/>
+                            <field name="product_name"/>
+                            <field name="prescription_list"/>
+                            <field name="quantity"/>
+                        </list>
+                    </field>
+                    <group invisible="state != 'returned'">
+                        <field name="return_reason"/>
+                        <field name="return_picking_id"/>
+                        <field name="return_scrap_ids" widget="many2many_tags"/>
+                        <field name="refund_ids" widget="many2many_tags"/>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

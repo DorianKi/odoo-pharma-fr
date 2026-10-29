@@ -17,7 +17,7 @@ Ce dépôt est la **brique « source de données »** d'un projet d'analyse de d
 | 1 | `pharma_fr_base` | Base produits BDPM, fiche article officine (CIP13, remboursement, génériques, listes, TVA) | ✅ |
 | 2 | `pharma_fr_purchase` | Grossistes-répartiteurs et commandes directes aux laboratoires, conditions commerciales, plafonds légaux de remise, réassort | ✅ |
 | 3 | `pharma_fr_dispensation` | Ordonnances, patients, prescripteurs, tiers payant AMO / AMC, honoraires, substitution, facturation par payeur | ✅ |
-| 4 | `pharma_fr_regulatory` | Registre des stupéfiants, ordonnancier, périmés et retours | 🔜 |
+| 4 | `pharma_fr_regulatory` | Registre des stupéfiants, ordonnancier, périmés (destruction) et retours patients | ✅ |
 
 ## Étape 1 : `pharma_fr_base`
 
@@ -147,8 +147,36 @@ comme prix fabricant HT. La loi l'apprécie par année civile et par ligne de pr
 - **Analyse** : vues tableau croisé et graphique du chiffre d'affaires, des honoraires
   et de la marge, par jour, article ou prescripteur.
 
-Hors périmètre : télétransmission SESAM-Vitale (FSE), franchises médicales (recouvrées
-par l'assurance maladie), régime local d'Alsace-Moselle.
+Hors périmètre : télétransmission SESAM-Vitale (FSE) et franchises médicales (recouvrées
+par l'assurance maladie). Le projet vise une officine d'Île-de-France, qui relève du régime
+général : le régime local d'Alsace-Moselle n'est pas modélisé.
+
+## Étape 4 : `pharma_fr_regulatory`
+
+- **Registre des stupéfiants** : chaque entrée et sortie de stupéfiant est inscrite
+  automatiquement dès qu'un mouvement de stock est validé. Cela couvre :
+  - les réceptions fournisseur, les délivrances, les retours patient et fournisseur ;
+  - les destructions et les régularisations d'inventaire.
+
+  Chaque ligne indique le numéro d'ordre par produit, les lots, le patient ou le
+  fournisseur, le prescripteur et le **stock après opération**. Le registre ne peut être
+  ni modifié ni supprimé, et s'imprime en PDF.
+- **Ordonnancier** : chaque délivrance de médicament de la liste I, de la liste II ou
+  stupéfiant est transcrite avec une numérotation chronologique. Les noms et adresses du
+  patient et du prescripteur, le RPPS, le produit, la quantité et les lots y sont figés
+  au moment de la délivrance. L'ordonnancier n'est pas modifiable et s'imprime en PDF.
+- **Péremptions** : liste des lots périmés ou qui périment sous 3 ou 6 mois, avec leur
+  valeur, et un assistant de **destruction des périmés** (mise au rebut avec le motif
+  « Périmé »). Cela donne la **valeur détruite**, un indicateur de pilotage du stock.
+- **Retours patients** :
+  - des **avoirs** sont émis pour chaque payeur ;
+  - les lots reviennent en stock, puis sont **détruits** (un médicament rapporté par un
+    patient ne peut pas être redélivré), sauf remise en stock explicite si le produit
+    n'a pas quitté l'officine ;
+  - le retour et la destruction apparaissent au registre des stupéfiants.
+
+Le registre compte les quantités en boîtes (unité de l'article). Un registre tenu en
+unités de prise demanderait une unité de mesure dédiée par article.
 
 ## Installation
 
@@ -161,7 +189,7 @@ docker compose up -d                  # Odoo 19 + PostgreSQL 16 → http://local
 ```
 
 1. Créez une base de données en choisissant le pays **France** (plan comptable et TVA françaises).
-2. **Applications** → installez « Pharmacie FR - Base produits (BDPM) » puis « Pharmacie FR - Achats » et « Pharmacie FR - Dispensation ».
+2. **Applications** → installez « Pharmacie FR - Base produits (BDPM) » puis « Pharmacie FR - Achats » , « Pharmacie FR - Dispensation » et « Pharmacie FR - Réglementaire ».
 3. **Pharmacie → Configuration → Import BDPM** : déposez `bdpm/bdpm.zip` et choisissez
    les articles à créer (par exemple, toutes les présentations commercialisées et remboursables).
 
@@ -174,8 +202,9 @@ alors relue chaque mois depuis ce répertoire, alimenté par `scripts/download_b
 ### Tests
 
 ```bash
-odoo -d test -i pharma_fr_base,pharma_fr_purchase,pharma_fr_dispensation \
-     --test-tags=/pharma_fr_base,/pharma_fr_purchase,/pharma_fr_dispensation --stop-after-init
+odoo -d test -i pharma_fr_base,pharma_fr_purchase,pharma_fr_dispensation,pharma_fr_regulatory \
+     --test-tags=/pharma_fr_base,/pharma_fr_purchase,/pharma_fr_dispensation,/pharma_fr_regulatory \
+     --stop-after-init
 python -m doctest -v pharma_fr_base/lib/bdpm.py   # parseur seul, sans Odoo
 ```
 

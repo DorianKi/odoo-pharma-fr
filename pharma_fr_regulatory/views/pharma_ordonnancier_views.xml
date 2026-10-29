@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_pharma_ordonnancier_list" model="ir.ui.view">
+        <field name="name">pharma.ordonnancier.list</field>
+        <field name="model">pharma.ordonnancier</field>
+        <field name="arch" type="xml">
+            <list string="Ordonnancier" create="0" edit="0" delete="0">
+                <field name="number"/>
+                <field name="date"/>
+                <field name="patient_name"/>
+                <field name="patient_address" optional="hide"/>
+                <field name="prescriber_name"/>
+                <field name="prescriber_rpps" optional="hide"/>
+                <field name="product_name"/>
+                <field name="prescription_list"/>
+                <field name="quantity"/>
+                <field name="lot_names" optional="hide"/>
+                <field name="prescription_id" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_pharma_ordonnancier_search" model="ir.ui.view">
+        <field name="name">pharma.ordonnancier.search</field>
+        <field name="model">pharma.ordonnancier</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="number"/>
+                <field name="patient_name"/>
+                <field name="prescriber_name"/>
+                <field name="product_name"/>
+                <filter name="list_1" string="Liste I" domain="[('prescription_list', '=', 'list_1')]"/>
+                <filter name="list_2" string="Liste II" domain="[('prescription_list', '=', 'list_2')]"/>
+                <filter name="narcotic" string="Stupéfiants" domain="[('prescription_list', '=', 'narcotic')]"/>
+                <filter name="date" string="Date" date="date"/>
+                <filter name="group_day" string="Jour" context="{'group_by': 'date:day'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_pharma_ordonnancier" model="ir.actions.act_window">
+        <field name="name">Ordonnancier</field>
+        <field name="res_model">pharma.ordonnancier</field>
+        <field name="view_mode">list</field>
+        <field name="help" type="html">
+            <p>Chaque délivrance de médicament de la liste I, de la liste II ou stupéfiant y est
+               transcrite automatiquement, avec une numérotation chronologique.</p>
+        </field>
+    </record>
+</odoo>

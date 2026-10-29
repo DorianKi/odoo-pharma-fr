@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="rule_pharma_narcotic_register_company" model="ir.rule">
+        <field name="name">Registre des stupéfiants : multi-société</field>
+        <field name="model_id" ref="model_pharma_narcotic_register"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_pharma_ordonnancier_company" model="ir.rule">
+        <field name="name">Ordonnancier : multi-société</field>
+        <field name="model_id" ref="model_pharma_ordonnancier"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+</odoo>

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_stock_quant_list_pharma_expiry" model="ir.ui.view">
+        <field name="name">stock.quant.list.pharma.expiry</field>
+        <field name="model">stock.quant</field>
+        <field name="priority">60</field>
+        <field name="arch" type="xml">
+            <list string="Péremptions" create="0" edit="0"
+                  decoration-danger="expiration_date and expiration_date &lt; now"
+                  decoration-warning="expiration_date and expiration_date &gt;= now">
+                <header>
+                    <button name="%(action_pharma_expiry_scrap_wizard)d" type="action"
+                            string="Détruire" groups="pharma_fr_base.group_pharma_manager"/>
+                </header>
+                <field name="product_id"/>
+                <field name="lot_id"/>
+                <field name="expiration_date"/>
+                <field name="location_id" groups="stock.group_stock_multi_locations"/>
+                <field name="quantity" sum="Unités"/>
+                <field name="value" sum="Valeur" optional="show"/>
+                <field name="currency_id" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_stock_quant_search_pharma_expiry" model="ir.ui.view">
+        <field name="name">stock.quant.search.pharma.expiry</field>
+        <field name="model">stock.quant</field>
+        <field name="inherit_id" ref="stock.quant_search_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <separator/>
+                <filter name="pharma_expired" string="Périmés"
+                        domain="[('expiration_date', '&lt;', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter name="pharma_expiring_3m" string="Périment sous 3 mois"
+                        domain="[('expiration_date', '&gt;=', context_today().strftime('%Y-%m-%d')),
+                                 ('expiration_date', '&lt;', (context_today() + relativedelta(months=3)).strftime('%Y-%m-%d'))]"/>
+                <filter name="pharma_expiring_6m" string="Périment sous 6 mois"
+                        domain="[('expiration_date', '&gt;=', context_today().strftime('%Y-%m-%d')),
+                                 ('expiration_date', '&lt;', (context_today() + relativedelta(months=6)).strftime('%Y-%m-%d'))]"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_pharma_expiry" model="ir.actions.act_window">
+        <field name="name">Péremptions</field>
+        <field name="res_model">stock.quant</field>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="view_stock_quant_list_pharma_expiry"/>
+        <field name="domain">[('location_id.usage', '=', 'internal'), ('expiration_date', '!=', False), ('quantity', '>', 0)]</field>
+        <field name="context">{'search_default_pharma_expiring_6m': 1, 'search_default_pharma_expired': 1}</field>
+    </record>
+</odoo>
