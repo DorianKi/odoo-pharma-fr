@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!--
+        Plafonds de l'article L. 138-9 du code de la sécurité sociale.
+        Valeurs historiques ; un arrêté du 4 août 2025 prévoyait de les abaisser
+        (30 % génériques, 15 % biosimilaires, puis 20 % toutes catégories au
+        1er juillet 2027) et son application a été suspendue. Vérifiez les valeurs
+        en vigueur et ajoutez une nouvelle ligne datée à chaque évolution :
+        Pharmacie > Configuration > Plafonds de remise.
+    -->
+    <record id="cap_base" model="pharma.discount.cap">
+        <field name="name">Spécialités remboursables</field>
+        <field name="cap_category">base</field>
+        <field name="rate">2.5</field>
+        <field name="date_from">2014-01-01</field>
+        <field name="source">Art. L. 138-9 CSS, I</field>
+    </record>
+    <record id="cap_generic" model="pharma.discount.cap">
+        <field name="name">Génériques</field>
+        <field name="cap_category">generic</field>
+        <field name="rate">40</field>
+        <field name="date_from">2014-09-01</field>
+        <field name="source">Art. L. 138-9 CSS, II et arrêté de plafonnement</field>
+    </record>
+    <record id="cap_biosimilar" model="pharma.discount.cap">
+        <field name="name">Biosimilaires substituables</field>
+        <field name="cap_category">biosimilar</field>
+        <field name="rate">20</field>
+        <field name="date_from">2022-01-01</field>
+        <field name="source">Art. L. 138-9 CSS et arrêté de plafonnement</field>
+    </record>
+</odoo>

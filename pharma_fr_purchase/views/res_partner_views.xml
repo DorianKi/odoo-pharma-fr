@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_partner_form_pharma_purchase" model="ir.ui.view">
+        <field name="name">res.partner.form.pharma.purchase</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="pharma_fr_base.view_partner_form_pharma"/>
+        <field name="arch" type="xml">
+            <field name="pharma_partner_type" position="after">
+                <field name="pharma_currency_id" invisible="1"/>
+                <field name="pharma_franco_amount"
+                       invisible="pharma_partner_type not in ('wholesaler', 'laboratory')"/>
+                <field name="pharma_is_main_wholesaler" invisible="pharma_partner_type != 'wholesaler'"/>
+                <field name="pharma_deliveries_per_day" invisible="pharma_partner_type != 'wholesaler'"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="action_pharma_wholesaler" model="ir.actions.act_window">
+        <field name="name">Grossistes-répartiteurs</field>
+        <field name="res_model">res.partner</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('pharma_partner_type', '=', 'wholesaler')]</field>
+        <field name="context">{'default_pharma_partner_type': 'wholesaler', 'default_is_company': True}</field>
+    </record>
+</odoo>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="product_template_form_view_pharma_purchase" model="ir.ui.view">
+        <field name="name">product.template.form.pharma.purchase</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="pharma_fr_base.product_template_form_view_pharma"/>
+        <field name="arch" type="xml">
+            <field name="pharma_vat_rate" position="after">
+                <field name="pharma_is_biosimilar" invisible="pharma_category != 'drug_reimbursed'"/>
+                <field name="pharma_discount_cap_category"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="action_pharma_replenishment_from_products" model="ir.actions.act_window">
+        <field name="name">Calculer les seuils de réassort</field>
+        <field name="res_model">pharma.replenishment.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="product.model_product_template"/>
+        <field name="binding_view_types">list</field>
+        <field name="group_ids" eval="[(4, ref('pharma_fr_base.group_pharma_manager'))]"/>
+    </record>
+</odoo>

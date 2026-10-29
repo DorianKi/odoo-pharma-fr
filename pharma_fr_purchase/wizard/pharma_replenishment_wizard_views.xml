@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_pharma_replenishment_wizard_form" model="ir.ui.view">
+        <field name="name">pharma.replenishment.wizard.form</field>
+        <field name="model">pharma.replenishment.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Seuils de réassort">
+                <field name="state" invisible="1"/>
+                <div invisible="state != 'draft'">
+                    <p class="text-muted">
+                        Mini = consommation journalière × (délai fournisseur + sécurité).
+                        Maxi = mini + consommation journalière × couverture.
+                        Les règles de réapprovisionnement sont créées ou mises à jour
+                        (déclenchement automatique, route « Acheter »).
+                    </p>
+                    <group>
+                        <group>
+                            <field name="warehouse_id"/>
+                            <field name="history_days"/>
+                            <field name="coverage_days"/>
+                        </group>
+                        <group>
+                            <field name="safety_days"/>
+                            <field name="default_lead_days"/>
+                            <field name="deactivate_dormant"/>
+                        </group>
+                    </group>
+                    <field name="product_tmpl_ids" widget="many2many_tags"
+                           placeholder="Tous les articles officine stockables"/>
+                </div>
+                <div invisible="state != 'done'">
+                    <field name="result" nolabel="1"/>
+                </div>
+                <footer>
+                    <button name="action_compute" type="object" string="Calculer" class="btn-primary"
+                            invisible="state != 'draft'"/>
+                    <button name="action_open_orderpoints" type="object" string="Voir les règles"
+                            class="btn-primary" invisible="state != 'done'"/>
+                    <button string="Fermer" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_pharma_replenishment_wizard" model="ir.actions.act_window">
+        <field name="name">Calcul des seuils de réassort</field>
+        <field name="res_model">pharma.replenishment.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

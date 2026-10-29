@@ -15,7 +15,7 @@ Ce dépôt est la **brique « source de données »** d'un projet d'analyse de d
 | Étape | Module | Contenu | État |
 |---|---|---|---|
 | 1 | `pharma_fr_base` | Base produits BDPM, fiche article officine (CIP13, remboursement, génériques, listes, TVA) | ✅ |
-| 2 | `pharma_fr_purchase` | Grossistes-répartiteurs et commandes directes aux laboratoires, remises, réassort | 🔜 |
+| 2 | `pharma_fr_purchase` | Grossistes-répartiteurs et commandes directes aux laboratoires, conditions commerciales, plafonds légaux de remise, réassort | ✅ |
 | 3 | `pharma_fr_dispensation` | Ordonnances, patients, prescripteurs, tiers payant AMO / AMC, honoraires | 🔜 |
 | 4 | `pharma_fr_regulatory` | Registre des stupéfiants, ordonnancier, périmés et retours | 🔜 |
 
@@ -76,6 +76,38 @@ pharma_fr_base/
 └── tests/                   # 17 tests (parseur + import + articles) et jeu de données BDPM fictif
 ```
 
+## Étape 2 : `pharma_fr_purchase`
+
+- **Fournisseurs de l'officine** : grossistes-répartiteurs (grossiste principal, nombre de
+  livraisons par jour, franco) et laboratoires en commande directe. Le **type de commande**
+  (grossiste / directe) est déduit du fournisseur, ce qui permet de suivre la répartition
+  des achats.
+- **Conditions commerciales** datées par fournisseur, avec une remise immédiate (sur facture)
+  et une remise différée (ristourne, coopération commerciale) :
+  - la remise peut porter sur tous les produits, un segment (génériques, remboursables hors
+    génériques, non remboursables, parapharmacie, dispositifs médicaux), un laboratoire ou
+    un article, avec une quantité minimum ;
+  - la condition la plus spécifique s'applique automatiquement aux lignes de commande.
+- **Plafonds légaux de remise** (art. L. 138-9 du code de la sécurité sociale), dans un
+  **barème daté** : chaque commande applique le plafond en vigueur à sa date. Pour une
+  spécialité remboursable, l'avantage total (remise immédiate et différée) est ramené au
+  plafond. Une alerte signale toute remise saisie à la main au-delà de la limite.
+  > Les plafonds évoluent : un arrêté du 4 août 2025 prévoyait de les abaisser, puis son
+  > application a été suspendue. Les valeurs fournies (2,5 % / 40 % / 20 %) sont à vérifier
+  > dans *Pharmacie → Configuration → Plafonds de remise*, où l'on ajoute une ligne datée
+  > à chaque évolution.
+- **Prix net net** par ligne (après remises immédiate et différée) et **remises différées
+  attendues** par commande : c'est le coût d'achat réel qui sert au calcul de la marge.
+- **Alerte franco** sur les commandes en cours, avec le montant manquant.
+- **Calcul des seuils de réassort** à partir des ventes réelles :
+  - mini = consommation × (délai fournisseur + sécurité) ;
+  - maxi = mini + consommation × couverture.
+  Le calcul crée ou met à jour les règles de réapprovisionnement Odoo (déclenchement
+  automatique, route « Acheter ») et peut remettre à zéro les produits dormants.
+
+Simplifications : le plafond est contrôlé ligne par ligne, sur le prix d'achat considéré
+comme prix fabricant HT. La loi l'apprécie par année civile et par ligne de produits.
+
 ## Installation
 
 ### Avec Docker
@@ -87,7 +119,7 @@ docker compose up -d                  # Odoo 19 + PostgreSQL 16 → http://local
 ```
 
 1. Créez une base de données en choisissant le pays **France** (plan comptable et TVA françaises).
-2. **Applications** → installez « Pharmacie FR - Base produits (BDPM) ».
+2. **Applications** → installez « Pharmacie FR - Base produits (BDPM) » puis « Pharmacie FR - Achats ».
 3. **Pharmacie → Configuration → Import BDPM** : déposez `bdpm/bdpm.zip` et choisissez
    les articles à créer (par exemple, toutes les présentations commercialisées et remboursables).
 
@@ -100,7 +132,8 @@ alors relue chaque mois depuis ce répertoire, alimenté par `scripts/download_b
 ### Tests
 
 ```bash
-odoo -d test -i pharma_fr_base --test-tags=/pharma_fr_base --stop-after-init
+odoo -d test -i pharma_fr_base,pharma_fr_purchase \
+     --test-tags=/pharma_fr_base,/pharma_fr_purchase --stop-after-init
 python -m doctest -v pharma_fr_base/lib/bdpm.py   # parseur seul, sans Odoo
 ```
 

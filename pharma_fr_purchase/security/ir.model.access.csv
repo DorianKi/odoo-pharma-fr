@@ -1,0 +1,9 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_pharma_discount_cap_user,pharma.discount.cap.user,model_pharma_discount_cap,pharma_fr_base.group_pharma_user,1,0,0,0
+access_pharma_discount_cap_manager,pharma.discount.cap.manager,model_pharma_discount_cap,pharma_fr_base.group_pharma_manager,1,1,1,1
+access_pharma_discount_cap_purchase,pharma.discount.cap.purchase,model_pharma_discount_cap,purchase.group_purchase_user,1,0,0,0
+access_pharma_purchase_agreement_user,pharma.purchase.agreement.user,model_pharma_purchase_agreement,purchase.group_purchase_user,1,0,0,0
+access_pharma_purchase_agreement_manager,pharma.purchase.agreement.manager,model_pharma_purchase_agreement,pharma_fr_base.group_pharma_manager,1,1,1,1
+access_pharma_purchase_agreement_line_user,pharma.purchase.agreement.line.user,model_pharma_purchase_agreement_line,purchase.group_purchase_user,1,0,0,0
+access_pharma_purchase_agreement_line_manager,pharma.purchase.agreement.line.manager,model_pharma_purchase_agreement_line,pharma_fr_base.group_pharma_manager,1,1,1,1
+access_pharma_replenishment_wizard_manager,pharma.replenishment.wizard.manager,model_pharma_replenishment_wizard,pharma_fr_base.group_pharma_manager,1,1,1,1

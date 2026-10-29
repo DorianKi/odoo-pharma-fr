@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_pharma_purchase" name="Achats" parent="pharma_fr_base.menu_pharma_root" sequence="20"/>
+    <menuitem id="menu_pharma_purchase_order" name="Commandes fournisseurs" parent="menu_pharma_purchase"
+              action="action_pharma_purchase_order" sequence="10"/>
+    <menuitem id="menu_pharma_purchase_agreement" name="Conditions commerciales" parent="menu_pharma_purchase"
+              action="action_pharma_purchase_agreement" sequence="20"/>
+    <menuitem id="menu_pharma_wholesaler" name="Grossistes-répartiteurs" parent="menu_pharma_purchase"
+              action="action_pharma_wholesaler" sequence="30"/>
+
+    <menuitem id="menu_pharma_stock" name="Stock" parent="pharma_fr_base.menu_pharma_root" sequence="30"/>
+    <menuitem id="menu_pharma_replenishment" name="Calcul des seuils de réassort" parent="menu_pharma_stock"
+              action="action_pharma_replenishment_wizard" sequence="10"
+              groups="pharma_fr_base.group_pharma_manager"/>
+    <menuitem id="menu_pharma_orderpoint" name="Règles de réapprovisionnement" parent="menu_pharma_stock"
+              action="stock.action_orderpoint" sequence="20"/>
+
+    <menuitem id="menu_pharma_discount_cap" name="Plafonds de remise" parent="pharma_fr_base.menu_pharma_config"
+              action="action_pharma_discount_cap" sequence="20"/>
+</odoo>

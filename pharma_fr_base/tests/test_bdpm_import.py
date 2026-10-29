@@ -15,6 +15,12 @@ class TestBdpmImport(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.importer = cls.env["pharma.bdpm.importer"]
+        # Les tests partent d'un référentiel vide (base de démonstration éventuelle).
+        cls.env["product.template"].search([("pharma_presentation_id", "!=", False)]).write(
+            {"pharma_presentation_id": False, "barcode": False, "active": False}
+        )
+        cls.env["pharma.specialite"].search([]).unlink()
+        cls.env["pharma.generic.group"].search([]).unlink()
         cls.files = cls.importer.read_directory(DATA_DIR)
 
     def _import(self, **kwargs):

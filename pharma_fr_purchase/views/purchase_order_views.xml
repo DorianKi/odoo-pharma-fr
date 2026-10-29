@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="purchase_order_form_pharma" model="ir.ui.view">
+        <field name="name">purchase.order.form.pharma</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_pharma_apply_agreement" type="object"
+                        string="Appliquer les conditions commerciales"
+                        invisible="state not in ('draft', 'sent')"/>
+            </xpath>
+            <xpath expr="//header" position="after">
+                <div class="alert alert-warning mb-0" role="alert" invisible="not pharma_below_franco">
+                    Commande sous le franco du fournisseur : il manque
+                    <field name="pharma_franco_missing" class="oe_inline"/> HT
+                    (franco : <field name="pharma_franco_amount" class="oe_inline"/>).
+                </div>
+                <div class="alert alert-danger mb-0" role="alert" invisible="not pharma_has_over_cap">
+                    Au moins une ligne dépasse le plafond légal de remise
+                    (art. L. 138-9 du code de la sécurité sociale).
+                </div>
+            </xpath>
+            <field name="partner_ref" position="after">
+                <field name="pharma_order_type"/>
+                <field name="pharma_agreement_id" invisible="not pharma_agreement_id"/>
+            </field>
+            <xpath expr="//field[@name='order_line']/list/field[@name='discount']" position="after">
+                <field name="pharma_deferred_rebate" optional="hide"/>
+                <field name="pharma_cap_rate" optional="hide" invisible="not pharma_has_cap"/>
+                <field name="pharma_has_cap" column_invisible="1"/>
+                <field name="pharma_discount_capped" optional="hide"/>
+                <field name="pharma_over_cap" column_invisible="1"/>
+                <field name="pharma_net_price_unit" optional="hide"/>
+            </xpath>
+            <xpath expr="//field[@name='order_line']/list" position="attributes">
+                <attribute name="decoration-danger">pharma_over_cap</attribute>
+            </xpath>
+            <xpath expr="//field[@name='order_line']/list/field[@name='discount']" position="attributes">
+                <attribute name="optional">show</attribute>
+            </xpath>
+            <xpath expr="//group[hasclass('oe_subtotal_footer')]" position="inside">
+                <field name="pharma_deferred_rebate_amount" invisible="not pharma_deferred_rebate_amount"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="purchase_order_search_pharma" model="ir.ui.view">
+        <field name="name">purchase.order.search.pharma</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_view_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <separator/>
+                <filter name="pharma_wholesaler" string="Commandes grossistes"
+                        domain="[('pharma_order_type', '=', 'wholesaler')]"/>
+                <filter name="pharma_direct" string="Commandes directes laboratoires"
+                        domain="[('pharma_order_type', '=', 'direct')]"/>
+                <filter name="group_pharma_order_type" string="Type de commande"
+                        context="{'group_by': 'pharma_order_type'}"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_pharma_purchase_order" model="ir.actions.act_window">
+        <field name="name">Commandes fournisseurs</field>
+        <field name="res_model">purchase.order</field>
+        <field name="view_mode">list,kanban,form,pivot,graph</field>
+        <field name="search_view_id" ref="purchase.purchase_order_view_search"/>
+    </record>
+</odoo>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_pharma_discount_cap_list" model="ir.ui.view">
+        <field name="name">pharma.discount.cap.list</field>
+        <field name="model">pharma.discount.cap</field>
+        <field name="arch" type="xml">
+            <list string="Plafonds de remise" editable="bottom">
+                <field name="cap_category"/>
+                <field name="name"/>
+                <field name="rate"/>
+                <field name="date_from"/>
+                <field name="source"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_pharma_discount_cap" model="ir.actions.act_window">
+        <field name="name">Plafonds légaux de remise</field>
+        <field name="res_model">pharma.discount.cap</field>
+        <field name="view_mode">list</field>
+        <field name="help" type="html">
+            <p>Plafonds des remises, ristournes et avantages commerciaux sur les
+               spécialités remboursables (art. L. 138-9 du code de la sécurité sociale),
+               en % du prix fabricant HT. Ajoutez une ligne datée à chaque évolution
+               réglementaire : chaque commande applique le plafond en vigueur à sa date.</p>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_pharma_purchase_agreement_list" model="ir.ui.view">
+        <field name="name">pharma.purchase.agreement.list</field>
+        <field name="model">pharma.purchase.agreement</field>
+        <field name="arch" type="xml">
+            <list string="Conditions commerciales">
+                <field name="partner_id"/>
+                <field name="partner_type"/>
+                <field name="name"/>
+                <field name="date_start"/>
+                <field name="date_end"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_pharma_purchase_agreement_form" model="ir.ui.view">
+        <field name="name">pharma.purchase.agreement.form</field>
+        <field name="model">pharma.purchase.agreement</field>
+        <field name="arch" type="xml">
+            <form string="Conditions commerciales">
+                <sheet>
+                    <widget name="web_ribbon" title="Archivé" bg_color="text-bg-danger" invisible="active"/>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="ex. Accord génériques 2026"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="partner_id"/>
+                            <field name="partner_type"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="active" invisible="1"/>
+                        </group>
+                        <group>
+                            <field name="date_start"/>
+                            <field name="date_end"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Conditions" name="lines">
+                            <field name="line_ids">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="scope"/>
+                                    <field name="laboratory_id"/>
+                                    <field name="product_tmpl_id"/>
+                                    <field name="min_qty"/>
+                                    <field name="discount"/>
+                                    <field name="deferred_rebate"/>
+                                </list>
+                            </field>
+                            <p class="text-muted">
+                                La condition la plus spécifique s'applique (article, puis
+                                laboratoire et segment, laboratoire, segment, tous produits).
+                                Sur les spécialités remboursables, l'avantage total (remise
+                                immédiate et différée) est ramené au plafond légal en vigueur.
+                            </p>
+                        </page>
+                        <page string="Notes" name="notes">
+                            <field name="note"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_pharma_purchase_agreement_search" model="ir.ui.view">
+        <field name="name">pharma.purchase.agreement.search</field>
+        <field name="model">pharma.purchase.agreement</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="partner_id"/>
+                <field name="name"/>
+                <filter name="current" string="En vigueur"
+                        domain="[('date_start', '&lt;=', context_today().strftime('%Y-%m-%d')), '|', ('date_end', '=', False), ('date_end', '&gt;=', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter name="archived" string="Archivées" domain="[('active', '=', False)]"/>
+                <filter name="group_partner" string="Fournisseur" context="{'group_by': 'partner_id'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_pharma_purchase_agreement" model="ir.actions.act_window">
+        <field name="name">Conditions commerciales</field>
+        <field name="res_model">pharma.purchase.agreement</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_current': 1}</field>
+    </record>
+</odoo>
