@@ -8,8 +8,9 @@ et la BDPM importée :
 
 Paramètres (variables d'environnement, à passer avec ``docker compose exec -e``) :
 
-    DEMO_DAYS   nombre de jours simulés, se terminant la veille (défaut 90)
-    DEMO_SCALE  coefficient d'activité (défaut 1.0 ; environ 50 ventes par jour ouvré)
+    DEMO_MONTHS nombre de mois simulés, du 1er du mois jusqu'à la veille (défaut 3)
+    DEMO_DAYS   à la place de DEMO_MONTHS : nombre de jours se terminant la veille
+    DEMO_SCALE  coefficient d'activité (défaut 2.0 ; environ 100 passages par jour ouvré)
     DEMO_SEED   graine aléatoire (défaut 42) : même graine, mêmes données
     DEMO_FORCE  1 pour relancer sur une base déjà générée
 
@@ -50,8 +51,9 @@ from odoo.exceptions import UserError, ValidationError
 
 _logger = logging.getLogger("pharma_fr_demo")
 
-DAYS = int(os.environ.get("DEMO_DAYS", 90))
-SCALE = float(os.environ.get("DEMO_SCALE", 1.0))
+MONTHS = int(os.environ.get("DEMO_MONTHS", 3))
+DAYS = int(os.environ["DEMO_DAYS"]) if os.environ.get("DEMO_DAYS") else None
+SCALE = float(os.environ.get("DEMO_SCALE", 2.0))
 SEED = int(os.environ.get("DEMO_SEED", 42))
 FORCE = os.environ.get("DEMO_FORCE") == "1"
 
@@ -84,7 +86,11 @@ MOLECULES = [
     ("losartan", 3, "chronic", 2), ("valsartan", 3, "chronic", 2),
     ("tamsulosine", 3, "chronic", 2), ("allopurinol", 2, "chronic", 2),
     ("salbutamol", 3, "chronic", 2), ("pregabaline", 2, "chronic", 2),
-    ("colecalciferol", 3, "chronic", 2), ("morphine", 1, "chronic", 1),
+    ("colecalciferol", 3, "chronic", 2), ("dapagliflozine", 3, "chronic", 1),
+    ("empagliflozine", 2, "chronic", 1), ("sitagliptine", 3, "chronic", 2),
+    ("ezetimibe", 3, "chronic", 2), ("sacubitril", 2, "chronic", 1),
+    ("ticagrelor", 1, "chronic", 1), ("tiotropium", 2, "chronic", 1),
+    ("fluticasone", 2, "chronic", 2), ("morphine", 1, "chronic", 1),
     ("oxycodone", 1, "chronic", 1),
 ]
 
@@ -154,6 +160,40 @@ MUTUELLES = ["Mutuelle Horizon Santé (fictive)", "Mutuelle des Artisans d'Île-
              "Assurance Santé Entreprise Démo (fictive)"]
 
 
+# Marge dégressive lissée de l'officine (barème applicable depuis le 1er janvier 2020,
+# arrêté du 12 novembre 2018) : taux par tranche de prix fabricant HT. À vérifier.
+MDL_TRANCHES = [(1.91, 0.10), (22.90, 0.07), (150.00, 0.055), (1600.00, 0.05)]
+# Marge du grossiste-répartiteur : approximation (6,93 % du PFHT, bornée).
+WHOLESALER_RATE, WHOLESALER_MIN, WHOLESALER_MAX = 0.0693, 0.30, 32.50
+
+
+def officine_margin(pfht):
+    margin, floor = 0.0, 0.0
+    for ceiling, rate in MDL_TRANCHES:
+        if pfht > floor:
+            margin += (min(pfht, ceiling) - floor) * rate
+        floor = ceiling
+    return margin
+
+
+def wholesaler_margin(pfht):
+    return min(max(pfht * WHOLESALER_RATE, WHOLESALER_MIN), WHOLESALER_MAX)
+
+
+def pfht_from_public_price(ppttc, vat=2.1):
+    """Prix fabricant HT déduit du prix public TTC (hors honoraires) d'un médicament
+    remboursable : PPTTC = (PFHT + marge grossiste + marge officine) × (1 + TVA)."""
+    ppht = ppttc / (1 + vat / 100)
+    low, high = 0.0, ppht
+    for _i in range(60):
+        mid = (low + high) / 2
+        if mid + wholesaler_margin(mid) + officine_margin(mid) > ppht:
+            high = mid
+        else:
+            low = mid
+    return round(low, 4)
+
+
 def normalize(text):
     text = unicodedata.normalize("NFKD", text or "")
     return "".join(c for c in text if not unicodedata.combining(c)).lower()
@@ -174,11 +214,17 @@ class Simulation:
         self.company = env.company
         self.today = date.today()
         self.end = self.today - timedelta(days=1)
-        self.start = self.end - timedelta(days=DAYS - 1)
+        if DAYS:
+            self.start = self.end - timedelta(days=DAYS - 1)
+        else:  # mois complets : du 1er du mois, (MONTHS - 1) mois avant le mois courant
+            month_index = self.end.year * 12 + self.end.month - 1 - (MONTHS - 1)
+            self.start = date(month_index // 12, month_index % 12 + 1, 1)
         self.warehouse = env["stock.warehouse"].search([("company_id", "=", self.company.id)], limit=1)
         self.stock = self.warehouse.lot_stock_id
         self.stats = defaultdict(int)
-        self.demand = {}           # product_id -> boîtes par jour
+        self.demand = {}           # product_id -> demande estimée (boîtes par jour)
+        self.popularity = {}       # product_id -> poids de prescription (fixe)
+        self.sold_today = defaultdict(float)
         self.molecules = {}        # motif -> {weight, profile, princeps, generics, products}
         self.pending = defaultdict(list)   # date -> [picking]
         self.on_order = defaultdict(float)  # product_id -> quantité commandée non reçue
@@ -227,7 +273,8 @@ class Simulation:
 
     def check(self):
         Module = self.env["ir.module.module"]
-        for name in ("pharma_fr_purchase", "pharma_fr_dispensation", "pharma_fr_regulatory"):
+        for name in ("pharma_fr_purchase", "pharma_fr_dispensation", "pharma_fr_regulatory",
+                     "pharma_fr_analytics"):
             if Module.search_count([("name", "=", name), ("state", "=", "installed")]) == 0:
                 raise UserError(f"Le module {name} doit être installé (Applications).")
         if not self.env["pharma.presentation"].search_count([]):
@@ -471,13 +518,15 @@ class Simulation:
             vat = float(tmpl.pharma_vat_rate or 20)
             price_ttc = tmpl.pharma_public_price or tmpl.list_price
             price_ht = price_ttc / (1 + vat / 100)
-            if tmpl.pharma_category == "drug_reimbursed":
-                factor = 0.80 if price_ht <= 22.9 else (0.88 if price_ht <= 150 else 0.94)
-            elif tmpl.pharma_category == "drug_otc":
-                factor = 0.66
+            pfht = None
+            if tmpl.pharma_category == "drug_reimbursed" and tmpl.pharma_public_price:
+                # Prix réglementé : achat au grossiste = PFHT + marge du grossiste.
+                pfht = pfht_from_public_price(tmpl.pharma_public_price, vat)
+                cost = round(pfht + wholesaler_margin(pfht), 2)
             else:
-                factor = 0.60
-            cost = round(price_ht * factor * rng.uniform(0.97, 1.03), 2)
+                # Marge commerciale libre : environ 30 % (conseil) à 32-35 % (parapharmacie).
+                factor = 0.70 if tmpl.pharma_category == "drug_otc" else 0.68
+                cost = round(price_ht * factor * rng.uniform(0.95, 1.05), 2)
             is_para = tmpl.pharma_category in ("parapharmacy", "medical_device")
             main = self.para_supplier if is_para else self.wholesaler
             vals.append({"partner_id": main.id, "product_tmpl_id": tmpl.id, "price": cost,
@@ -491,10 +540,11 @@ class Simulation:
                 and tmpl.pharma_generic_type not in (False, "princeps")
             )
             if direct:
+                # En direct, le laboratoire facture au PFHT (pas de marge grossiste).
                 vals.append({"partner_id": self.generic_lab.id, "product_tmpl_id": tmpl.id,
-                             "price": cost, "delay": 3, "sequence": 2})
+                             "price": round(pfht or cost, 2), "delay": 3, "sequence": 2})
             self.supplier_of[product.id] = self.generic_lab if direct else main
-            discount = 0.18 if tmpl.pharma_generic_type not in (False, "princeps") else (
+            discount = 0.20 if tmpl.pharma_generic_type not in (False, "princeps") else (
                 0.08 if is_para else 0.02)
             tmpl.standard_price = round(cost * (1 - discount), 4)
         Supplierinfo.create(vals)
@@ -523,6 +573,39 @@ class Simulation:
                              Command.create({"scope": "generic", "discount": 30.0})],
             })
         self.log("Achats : génériqueur principal = %s", self.generic_lab.name or "aucun")
+
+    def calibrate_demand(self):
+        """Ajuste la demande estimée (boîtes par jour) au volume réellement simulé :
+        renouvellements des chroniques, ordonnances ponctuelles et comptoir."""
+        acute_per_day = 24 * SCALE
+        chronic_boxes = len(self.plans) * 2.6 * 1.75 / 30.0
+        acute_boxes = acute_per_day * 2.0 * 1.33
+        for profile, total in (("chronic", chronic_boxes), ("acute", acute_boxes)):
+            mols = {m: v for m, v in self.molecules.items() if v["profile"] == profile}
+            weight_sum = sum(v["weight"] for v in mols.values()) or 1
+            for mol in mols.values():
+                products = [p.product_tmpl_id.product_variant_id for p in mol["presentations"]]
+                shares = [self.demand.get(p.id, 0) for p in products]
+                share_sum = sum(shares) or 1
+                for product, share in zip(products, shares, strict=True):
+                    if product.id not in self.dormant:
+                        self.demand[product.id] = total * mol["weight"] / weight_sum * share / share_sum
+        counter_items = 20 * SCALE * 1.9
+        catalog = self.para_products + self.otc_products
+        weight_sum = sum(w for _p, w in catalog) or 1
+        for product, weight in catalog:
+            if product.id not in self.dormant:
+                self.demand[product.id] = counter_items * weight / weight_sum
+        self.popularity = dict(self.demand)
+        self.log("Demande estimée : %.0f boîtes et articles par jour", sum(self.demand.values()))
+
+    def learn_demand(self):
+        """Le soir, l'officine met à jour sa demande estimée (lissage exponentiel des
+        demandes du jour, servies ou non)."""
+        for pid in self.demand:
+            if pid in self.dormant:
+                continue
+            self.demand[pid] = 0.9 * self.demand[pid] + 0.1 * max(self.sold_today.get(pid, 0), 0)
 
     def lot_expiry(self, short=False):
         months = self.rng.randint(2, 5) if short else self.rng.randint(10, 36)
@@ -603,6 +686,22 @@ class Simulation:
         picking.with_context(skip_expired=True, skip_sms=True,
                              picking_ids_not_to_backorder=picking.ids).button_validate()
         self.stats["receptions"] += 1
+        self.bill(picking.purchase_id)
+
+    def bill(self, order):
+        """Facture fournisseur à réception (quantités reçues)."""
+        if not order:
+            return
+        try:
+            with self.env.cr.savepoint():
+                order.action_create_invoice()
+                bills = order.invoice_ids.filtered(lambda m: m.state == "draft")
+                bills.write({"invoice_date": fields.Date.today(),
+                             "ref": f"Facture {order.partner_id.name} {order.name}"})
+                bills.action_post()
+                self.stats["factures_fournisseurs"] += len(bills)
+        except UserError as exc:
+            _logger.debug("Pas de facture pour %s : %s", order.name, exc)
 
     def daily_orders(self, day):
         """Commande du matin : réassort chez le grossiste ; commande directe mensuelle
@@ -624,8 +723,8 @@ class Simulation:
                 if day.weekday() in (0, 3) and available < daily * 6:
                     to_para[pid] = math.ceil(daily * self.rng.uniform(8, 14)) or 1
                 continue
-            if available < daily * 3 + 1:
-                to_wholesaler[pid] = max(1, math.ceil(daily * self.rng.uniform(7, 11) - available))
+            if available < daily * 4 + 1:
+                to_wholesaler[pid] = max(1, math.ceil(daily * self.rng.uniform(9, 12) - available))
         today = day
         if to_wholesaler:
             self.place_order(self.wholesaler, to_wholesaler, today, "Réassort quotidien")
@@ -668,7 +767,7 @@ class Simulation:
     def pick_presentation(self, molecule):
         presentations = self.molecules[molecule]["presentations"]
         products = [p.product_tmpl_id.product_variant_id for p in presentations]
-        weights = [self.demand.get(p.id, 0.1) for p in products]
+        weights = [self.popularity.get(p.id, 0.1) for p in products]
         return self.rng.choices(products, weights=weights)[0]
 
     def substitute(self, product, prescriber, patient):
@@ -705,8 +804,12 @@ class Simulation:
         for product, qty, extra in wanted:
             if self.stock_level[product.id] >= qty:
                 self.stock_level[product.id] -= qty
+                self.sold_today[product.id] += qty
                 lines.append((product, qty, extra))
                 continue
+            # La demande non servie compte dans l'estimation de la demande : sinon une
+            # rupture ferait chuter la demande estimée et le produit ne serait plus commandé.
+            self.sold_today[product.id] += qty
             status = product.pharma_availability_status
             reason = "national_shortage" if status in ("shortage", "tension") else "stock"
             outcome = "lost" if reason == "national_shortage" or self.rng.random() < 0.35 else "deferred"
@@ -740,6 +843,7 @@ class Simulation:
             self.stats["delivrances_refusees"] += 1
             for product, qty, _extra in lines:
                 self.stock_level[product.id] += qty
+                self.sold_today[product.id] -= qty
                 self.missing(product, qty, patient, "stock", "deferred")
             _logger.debug("Délivrance impossible : %s", exc)
 
@@ -750,7 +854,7 @@ class Simulation:
             return
         candidates = [p for p in self.patients if p.pharma_age >= 35]
         for patient in self.rng.sample(candidates, int(len(candidates) * 0.45)):
-            count = min(len(chronic), self.rng.choice([1, 1, 2, 2, 3, 4]))
+            count = min(len(chronic), self.rng.choice([1, 2, 2, 3, 3, 4]))
             mols = self.rng.sample(chronic, count)
             narcotic = [m for m in mols if m in ("morphine", "oxycodone")]
             if narcotic and self.rng.random() < 0.8:
@@ -779,7 +883,7 @@ class Simulation:
                 product, extra = self.substitute(plan["products"][mol], prescriber, patient)
                 if patient.pharma_exemption == "ald":
                     extra = dict(extra, ald_related=True)
-                wanted.append((product, self.rng.choice([1, 1, 1, 2, 3]), extra))
+                wanted.append((product, self.rng.choice([1, 1, 2, 3]), extra))
             narcotic = any(p.pharma_is_narcotic for p, _q, _e in wanted)
             ald = patient.pharma_exemption == "ald"
             rx_type = "secure" if narcotic else ("bizone" if ald else "standard")
@@ -798,7 +902,7 @@ class Simulation:
         for _i in range(count):
             patient = self.rng.choice(self.patients)
             prescriber = self.rng.choices(self.prescribers, self.prescriber_weights)[0]
-            mols = set(self.rng.choices(acute, weights, k=self.rng.choice([1, 1, 2, 2, 3])))
+            mols = set(self.rng.choices(acute, weights, k=self.rng.choice([1, 2, 2, 3])))
             wanted = []
             for mol in mols:
                 product, extra = self.substitute(self.pick_presentation(mol), prescriber, patient)
@@ -814,7 +918,7 @@ class Simulation:
         products, weights = zip(*catalog, strict=True)
         for _i in range(count):
             patient = self.walk_in if self.rng.random() < 0.7 else self.rng.choice(self.patients)
-            items = set(self.rng.choices(products, weights, k=self.rng.choice([1, 1, 1, 2, 3])))
+            items = set(self.rng.choices(products, weights, k=self.rng.choice([1, 1, 2, 2, 3])))
             wanted = [(p, 1, {}) for p in items]
             self.dispense(patient, False, self.serve_lines(wanted, patient))
 
@@ -849,9 +953,84 @@ class Simulation:
         except (UserError, ValidationError) as exc:
             _logger.warning("Retour impossible (%s) : %s", rx.name, exc)
 
+    # ------------------------------------------------------------------
+    # Encaissements et règlements
+    # ------------------------------------------------------------------
+
+    def journals(self):
+        if not hasattr(self, "_journals"):
+            Journal = self.env["account.journal"]
+            domain = [("company_id", "=", self.company.id)]
+            bank = Journal.search(domain + [("type", "=", "bank")], limit=1)
+            cash = Journal.search(domain + [("type", "=", "cash")], limit=1) or bank
+            self._journals = (bank, cash)
+        return self._journals
+
+    def pay(self, move, amount, journal):
+        if not journal or amount <= 0.0:
+            return
+        try:
+            with self.env.cr.savepoint():
+                self.env["account.payment.register"].with_context(
+                    active_model="account.move", active_ids=move.ids,
+                ).create({
+                    "payment_date": fields.Date.today(),
+                    "journal_id": journal.id,
+                    "amount": round(amount, 2),
+                    "payment_difference_handling": "open",
+                })._create_payments()
+                self.stats["paiements"] += 1
+        except (UserError, ValidationError) as exc:
+            _logger.warning("Paiement impossible (%s) : %s", move.name, exc)
+
+    def settle(self, day):
+        """Encaissements : comptoir le jour même, AMO sous 3 à 6 jours, AMC sous 8 à
+        30 jours, avec quelques rejets partiels (créances restant ouvertes).
+        Règlements fournisseurs : grossistes le 10 du mois suivant, laboratoire à
+        60 jours, parapharmacie à 30 jours."""
+        bank, cash = self.journals()
+        Move = self.env["account.move"]
+        open_invoices = Move.search([
+            ("company_id", "=", self.company.id), ("move_type", "=", "out_invoice"),
+            ("state", "=", "posted"), ("payment_state", "=", "not_paid"),
+        ])
+        counter = self.company.pharma_counter_partner_id
+        for inv in open_invoices:
+            rng = random.Random(SEED * 1_000_003 + inv.id)
+            age = (day - inv.invoice_date).days
+            partner = inv.partner_id
+            if partner == counter or partner.pharma_partner_type == "patient":
+                self.pay(inv, inv.amount_residual, cash)
+            elif partner.pharma_insurer_type == "amo" and age >= rng.randint(3, 6):
+                rejected = rng.random() < 0.15
+                self.pay(inv, inv.amount_residual * (rng.uniform(0.96, 0.995) if rejected else 1), bank)
+            elif partner.pharma_insurer_type == "amc" and age >= rng.randint(8, 30):
+                rejected = rng.random() < 0.25
+                self.pay(inv, inv.amount_residual * (rng.uniform(0.92, 0.99) if rejected else 1), bank)
+        bills = Move.search([
+            ("company_id", "=", self.company.id), ("move_type", "=", "in_invoice"),
+            ("state", "=", "posted"), ("payment_state", "=", "not_paid"),
+        ])
+        paid_month = getattr(self, "_wholesalers_paid", None)
+        first_after_10 = day.day >= 10 and paid_month != (day.year, day.month)
+        for bill in bills:
+            partner = bill.partner_id
+            age = (day - bill.invoice_date).days
+            if partner.pharma_partner_type == "wholesaler":
+                previous_month = (bill.invoice_date.year, bill.invoice_date.month) < (day.year, day.month)
+                if first_after_10 and previous_month:
+                    self.pay(bill, bill.amount_residual, bank)
+            elif partner == self.para_supplier and age >= 30:
+                self.pay(bill, bill.amount_residual, bank)
+            elif age >= 60:
+                self.pay(bill, bill.amount_residual, bank)
+        if first_after_10:
+            self._wholesalers_paid = (day.year, day.month)
+
     def simulate_day(self, day, frozen):
         factor = self.activity_factor(day)
         self.emergency, self.emergency_today = {}, set()
+        self.sold_today = defaultdict(float)
 
         frozen.move_to(datetime.combine(day, datetime.min.time()) + timedelta(hours=7))
         self.destroy_expired()
@@ -889,6 +1068,9 @@ class Simulation:
         frozen.move_to(datetime.combine(day, datetime.min.time()) + timedelta(hours=18, minutes=30))
         moves = self.env["pharma.prescription"]._pharma_invoice_pending(until=fields.Datetime.now())
         self.stats["factures"] += len(moves)
+        self.settle(day)
+        self.env["pharma.stock.snapshot"]._take_snapshot(on_date=day, company=self.company)
+        self.learn_demand()
 
     # ------------------------------------------------------------------
 
@@ -904,8 +1086,10 @@ class Simulation:
             self.create_parapharmacy()
             self.create_partners()
             self.setup_purchasing()
-            self.initial_stock()
+            self.popularity = dict(self.demand)
             self.build_chronic_plans()
+            self.calibrate_demand()
+            self.initial_stock()
             self.env.cr.commit()
             for day in self.opening_days():
                 self.simulate_day(day, frozen)

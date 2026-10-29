@@ -18,6 +18,7 @@ Ce dépôt est la **brique « source de données »** d'un projet d'analyse de d
 | 2 | `pharma_fr_purchase` | Grossistes-répartiteurs et commandes directes aux laboratoires, conditions commerciales, plafonds légaux de remise, réassort | ✅ |
 | 3 | `pharma_fr_dispensation` | Ordonnances, patients, prescripteurs, tiers payant AMO / AMC, honoraires, substitution, facturation par payeur | ✅ |
 | 4 | `pharma_fr_regulatory` | Registre des stupéfiants, ordonnancier, périmés (destruction) et retours patients | ✅ |
+| 5 | `pharma_fr_analytics` | Pilotage : photos quotidiennes du stock (valeur, couverture, péremptions, dormants, ruptures) | ✅ |
 
 ## Étape 1 : `pharma_fr_base`
 
@@ -184,6 +185,21 @@ général : le régime local d'Alsace-Moselle n'est pas modélisé.
 Le registre compte les quantités en boîtes (unité de l'article). Un registre tenu en
 unités de prise demanderait une unité de mesure dédiée par article.
 
+## Étape 5 : `pharma_fr_analytics`
+
+**Photo quotidienne du stock** : chaque soir, une tâche planifiée enregistre pour chaque
+article :
+- la quantité et la valeur au coût ;
+- les ventes sur 30 jours, la demande moyenne et la **couverture en jours** ;
+- la quantité et la valeur qui **périment sous 90 jours**, ainsi que les quantités périmées ;
+- la date de dernière vente, et les indicateurs **dormant** (sans vente depuis 60 jours),
+  **rupture officine** et **rupture nationale**.
+
+Odoo ne garde que le stock du moment : cette table fournit l'historique nécessaire au
+suivi quotidien (évolution de la valeur du stock, rotation, surstock). Elle se consulte
+dans *Pharmacie → Stock → Suivi quotidien du stock*, en vues graphique, tableau croisé
+ou liste.
+
 ## Données de démonstration
 
 `scripts/generate_demo_data.py` simule plusieurs mois d'activité d'une officine
@@ -195,8 +211,12 @@ docker compose exec -T odoo odoo shell -d pharmacie --no-http \
     --db_host=db --db_user=odoo --db_password=odoo < scripts/generate_demo_data.py
 ```
 
-Options : `-e DEMO_DAYS=90` (durée), `-e DEMO_SCALE=1.5` (volume d'activité),
-`-e DEMO_SEED=42` (reproductibilité).
+Options, à passer avec `-e` après `exec -T` :
+- `DEMO_MONTHS=3` : mois complets simulés (défaut 3), ou `DEMO_DAYS=90` ;
+- `DEMO_SCALE=2` : volume d'activité, environ 100 passages par jour ouvré par défaut ;
+- `DEMO_SEED=42` : reproductibilité.
+
+Durée indicative : environ 45 minutes pour 3 mois à l'échelle 2.
 
 **Fonctionnement**
 - L'horloge d'Odoo est simulée (freezegun) : stock, factures, registres et ordonnancier
@@ -210,7 +230,18 @@ Options : `-e DEMO_DAYS=90` (durée), `-e DEMO_SCALE=1.5` (volume d'activité),
   - les renouvellements des patients chroniques, les ordonnances ponctuelles et les
     ventes au comptoir ;
   - les dépannages et les manquants ;
-  - les retours, la destruction des périmés et les bordereaux de facturation.
+  - les retours, la destruction des périmés et les bordereaux de facturation ;
+  - les **encaissements** (comptoir le jour même, AMO sous quelques jours, mutuelles sous
+    1 à 4 semaines, quelques rejets partiels qui laissent des créances ouvertes) ;
+  - les **factures fournisseurs** à réception et leurs **règlements** (grossistes le 10 du
+    mois suivant, laboratoire à 60 jours, parapharmacie à 30 jours) ;
+  - la photo quotidienne du stock.
+- **Prix d'achat** :
+  - pour les médicaments remboursables, ils sont déduits du prix public par le barème
+    réglementé : PFHT, marge dégressive lissée de l'officine (barème 2020) et marge du
+    grossiste (approximation) ;
+  - les commandes directes au laboratoire sont facturées au PFHT ;
+  - le conseil et la parapharmacie ont une marge commerciale libre.
 - **Problèmes introduits volontairement** pour l'analyse :
   - surstock (commandes directes trop généreuses, produits dormants) ;
   - péremptions ;
@@ -232,7 +263,7 @@ docker compose up -d                  # Odoo 19 + PostgreSQL 16 → http://local
 ```
 
 1. Créez une base de données en choisissant le pays **France** (plan comptable et TVA françaises).
-2. **Applications** → installez « Pharmacie FR - Base produits (BDPM) » puis « Pharmacie FR - Achats » , « Pharmacie FR - Dispensation » et « Pharmacie FR - Réglementaire ».
+2. **Applications** (retirez le filtre « Applications ») → installez **« Pharmacie FR - Pilotage »** : il installe aussi les quatre autres modules.
 3. **Pharmacie → Configuration → Import BDPM** : déposez `bdpm/bdpm.zip` et choisissez
    les articles à créer (par exemple, toutes les présentations commercialisées et remboursables).
 
@@ -245,9 +276,8 @@ alors relue chaque mois depuis ce répertoire, alimenté par `scripts/download_b
 ### Tests
 
 ```bash
-odoo -d test -i pharma_fr_base,pharma_fr_purchase,pharma_fr_dispensation,pharma_fr_regulatory \
-     --test-tags=/pharma_fr_base,/pharma_fr_purchase,/pharma_fr_dispensation,/pharma_fr_regulatory \
-     --stop-after-init
+odoo -d test -i pharma_fr_analytics --stop-after-init \
+     --test-tags=/pharma_fr_base,/pharma_fr_purchase,/pharma_fr_dispensation,/pharma_fr_regulatory,/pharma_fr_analytics
 python -m doctest -v pharma_fr_base/lib/bdpm.py   # parseur seul, sans Odoo
 ```
 

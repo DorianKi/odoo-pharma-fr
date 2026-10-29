@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_pharma_stock_snapshot_user,pharma.stock.snapshot.user,model_pharma_stock_snapshot,pharma_fr_base.group_pharma_user,1,0,0,0
+access_pharma_stock_snapshot_manager,pharma.stock.snapshot.manager,model_pharma_stock_snapshot,pharma_fr_base.group_pharma_manager,1,1,1,1

@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_pharma_stock_snapshot_list" model="ir.ui.view">
+        <field name="name">pharma.stock.snapshot.list</field>
+        <field name="model">pharma.stock.snapshot</field>
+        <field name="arch" type="xml">
+            <list string="Photos du stock" create="0" edit="0"
+                  decoration-danger="is_out_of_stock" decoration-warning="is_dormant">
+                <field name="currency_id" column_invisible="1"/>
+                <field name="date"/>
+                <field name="product_id"/>
+                <field name="pharma_category" optional="show"/>
+                <field name="laboratory_id" optional="hide"/>
+                <field name="quantity" sum="Unités"/>
+                <field name="value" sum="Valeur"/>
+                <field name="daily_demand" optional="show"/>
+                <field name="coverage_days" optional="show"/>
+                <field name="value_expiring_90d" sum="Périme sous 90 j" optional="show"/>
+                <field name="is_dormant" optional="show"/>
+                <field name="is_out_of_stock" optional="show"/>
+                <field name="national_shortage" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_pharma_stock_snapshot_search" model="ir.ui.view">
+        <field name="name">pharma.stock.snapshot.search</field>
+        <field name="model">pharma.stock.snapshot</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="product_id"/>
+                <field name="laboratory_id"/>
+                <filter name="last_day" string="Dernière photo"
+                        domain="[('date', '=', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter name="dormant" string="Dormants" domain="[('is_dormant', '=', True)]"/>
+                <filter name="out" string="Ruptures officine" domain="[('is_out_of_stock', '=', True)]"/>
+                <filter name="overstock" string="Couverture &gt; 60 jours"
+                        domain="[('coverage_days', '&gt;', 60)]"/>
+                <filter name="expiring" string="Péremption sous 90 jours"
+                        domain="[('qty_expiring_90d', '&gt;', 0)]"/>
+                <filter name="date" string="Date" date="date"/>
+                <filter name="group_date" string="Jour" context="{'group_by': 'date:day'}"/>
+                <filter name="group_category" string="Catégorie" context="{'group_by': 'pharma_category'}"/>
+                <filter name="group_laboratory" string="Laboratoire" context="{'group_by': 'laboratory_id'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_pharma_stock_snapshot_graph" model="ir.ui.view">
+        <field name="name">pharma.stock.snapshot.graph</field>
+        <field name="model">pharma.stock.snapshot</field>
+        <field name="arch" type="xml">
+            <graph string="Valeur du stock" type="line">
+                <field name="date" interval="day"/>
+                <field name="value" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="view_pharma_stock_snapshot_pivot" model="ir.ui.view">
+        <field name="name">pharma.stock.snapshot.pivot</field>
+        <field name="model">pharma.stock.snapshot</field>
+        <field name="arch" type="xml">
+            <pivot string="Stock">
+                <field name="pharma_category" type="row"/>
+                <field name="date" interval="month" type="col"/>
+                <field name="value" type="measure"/>
+                <field name="value_expiring_90d" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="action_pharma_stock_snapshot" model="ir.actions.act_window">
+        <field name="name">Suivi quotidien du stock</field>
+        <field name="res_model">pharma.stock.snapshot</field>
+        <field name="view_mode">graph,pivot,list</field>
+        <field name="help" type="html">
+            <p>Une photo du stock est enregistrée chaque soir : quantité, valeur, demande
+               récente, couverture, péremptions à 90 jours, produits dormants et ruptures.</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_pharma_stock_snapshot" name="Suivi quotidien du stock"
+              parent="pharma_fr_purchase.menu_pharma_stock" action="action_pharma_stock_snapshot"
+              sequence="5"/>
+</odoo>
