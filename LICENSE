@@ -5,10 +5,6 @@ odoo-pharma-fr is published under the GNU LESSER GENERAL PUBLIC LICENSE, Version
 permissions on top of the GPL, the text of the GPL is included at the
 bottom as well.
 
-Some external libraries and contributions bundled with Odoo may be published
-under other GPL-compatible licenses. For these, please refer to the relevant
-source files and/or license files, in the source code tree.
-
 **************************************************************************
 
                    GNU LESSER GENERAL PUBLIC LICENSE
