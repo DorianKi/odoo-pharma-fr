@@ -16,7 +16,7 @@ Ce dépôt est la **brique « source de données »** d'un projet d'analyse de d
 |---|---|---|---|
 | 1 | `pharma_fr_base` | Base produits BDPM, fiche article officine (CIP13, remboursement, génériques, listes, TVA) | ✅ |
 | 2 | `pharma_fr_purchase` | Grossistes-répartiteurs et commandes directes aux laboratoires, conditions commerciales, plafonds légaux de remise, réassort | ✅ |
-| 3 | `pharma_fr_dispensation` | Ordonnances, patients, prescripteurs, tiers payant AMO / AMC, honoraires | 🔜 |
+| 3 | `pharma_fr_dispensation` | Ordonnances, patients, prescripteurs, tiers payant AMO / AMC, honoraires, substitution, facturation par payeur | ✅ |
 | 4 | `pharma_fr_regulatory` | Registre des stupéfiants, ordonnancier, périmés et retours | 🔜 |
 
 ## Étape 1 : `pharma_fr_base`
@@ -73,7 +73,7 @@ pharma_fr_base/
 │   └── res_partner.py            # laboratoires / grossistes
 ├── wizard/                  # assistant d'import
 ├── views/  security/  data/
-└── tests/                   # 17 tests (parseur + import + articles) et jeu de données BDPM fictif
+└── tests/                   # tests (parseur, import, articles) et jeu de données BDPM fictif
 ```
 
 ## Étape 2 : `pharma_fr_purchase`
@@ -108,6 +108,48 @@ pharma_fr_base/
 Simplifications : le plafond est contrôlé ligne par ligne, sur le prix d'achat considéré
 comme prix fabricant HT. La loi l'apprécie par année civile et par ligne de produits.
 
+## Étape 3 : `pharma_fr_dispensation`
+
+- **Patients** :
+  - numéro de sécurité sociale contrôlé (format et clé, y compris les départements 2A / 2B) ;
+  - caisse d'assurance maladie (AMO) et complémentaire santé (AMC), avec la garantie
+    souscrite (ticket modérateur, hors médicaments à 15 %) ;
+  - exonérations (ALD, C2S) et tiers payant.
+- **Prescripteurs** (numéro RPPS, spécialité) et **organismes payeurs**.
+- **Ordonnances** (simple, bizone ALD, sécurisée). Pour chaque ligne, le module calcule
+  automatiquement :
+  - le prix public, l'honoraire à la boîte (issu de la BDPM) et la base de remboursement ;
+  - la **répartition entre AMO, AMC et patient**, avec exonération des lignes ALD
+    (partie haute de l'ordonnance bizone).
+- **Substitution générique** :
+  - suivi des lignes substituées (princeps prescrit, générique délivré) et du taux de
+    génériques par ordonnance ;
+  - en cas de **refus de substitution**, remboursement sur la base du générique le plus cher
+    au même conditionnement et pas de tiers payant, sauf mention « non substituable ».
+- **Honoraires d'ordonnance** dans un **barème daté** : exécution d'ordonnance, âge
+  (moins de 3 ans, 70 ans et plus), ordonnance complexe (5 lignes et plus, exonérée du
+  ticket modérateur) et médicaments spécifiques (stupéfiants et assimilés).
+  > Montants fournis : 0,61 € et 1,68 € (au 1er janvier 2026), 0,30 € et 3,57 €, avec un taux
+  > AMO de 70 % par défaut. Ils sont à vérifier dans
+  > *Pharmacie → Configuration → Honoraires de dispensation*.
+- **Contrôles avant délivrance** :
+  - prescripteur obligatoire pour un médicament listé ou remboursable ;
+  - ordonnance de plus de 3 mois refusée pour une première délivrance ;
+  - ordonnance sécurisée exigée pour les stupéfiants et assimilés ;
+  - médicaments réservés à l'usage hospitalier bloqués ;
+  - stock insuffisant ou lots périmés bloqués.
+- **Délivrance** :
+  - sortie de stock en **FEFO** (premier périmé, premier sorti), avec les lots tracés sur
+    l'ordonnance ;
+  - **une facture par payeur** (AMO, AMC, patient), comptabilisée avec la TVA de chaque
+    article (2,1 % sur les médicaments remboursables et les honoraires) ;
+  - **coût d'achat et marge brute** enregistrés par ligne.
+- **Analyse** : vues tableau croisé et graphique du chiffre d'affaires, des honoraires
+  et de la marge, par jour, article ou prescripteur.
+
+Hors périmètre : télétransmission SESAM-Vitale (FSE), franchises médicales (recouvrées
+par l'assurance maladie), régime local d'Alsace-Moselle.
+
 ## Installation
 
 ### Avec Docker
@@ -119,7 +161,7 @@ docker compose up -d                  # Odoo 19 + PostgreSQL 16 → http://local
 ```
 
 1. Créez une base de données en choisissant le pays **France** (plan comptable et TVA françaises).
-2. **Applications** → installez « Pharmacie FR - Base produits (BDPM) » puis « Pharmacie FR - Achats ».
+2. **Applications** → installez « Pharmacie FR - Base produits (BDPM) » puis « Pharmacie FR - Achats » et « Pharmacie FR - Dispensation ».
 3. **Pharmacie → Configuration → Import BDPM** : déposez `bdpm/bdpm.zip` et choisissez
    les articles à créer (par exemple, toutes les présentations commercialisées et remboursables).
 
@@ -132,8 +174,8 @@ alors relue chaque mois depuis ce répertoire, alimenté par `scripts/download_b
 ### Tests
 
 ```bash
-odoo -d test -i pharma_fr_base,pharma_fr_purchase \
-     --test-tags=/pharma_fr_base,/pharma_fr_purchase --stop-after-init
+odoo -d test -i pharma_fr_base,pharma_fr_purchase,pharma_fr_dispensation \
+     --test-tags=/pharma_fr_base,/pharma_fr_purchase,/pharma_fr_dispensation --stop-after-init
 python -m doctest -v pharma_fr_base/lib/bdpm.py   # parseur seul, sans Odoo
 ```
 

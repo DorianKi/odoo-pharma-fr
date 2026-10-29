@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_pharma_prescription_list" model="ir.ui.view">
+        <field name="name">pharma.prescription.list</field>
+        <field name="model">pharma.prescription</field>
+        <field name="arch" type="xml">
+            <list string="Ordonnances" decoration-muted="state == 'cancel'" decoration-info="state == 'draft'">
+                <field name="currency_id" column_invisible="1"/>
+                <field name="name"/>
+                <field name="dispensing_date"/>
+                <field name="patient_id"/>
+                <field name="prescriber_id" optional="show"/>
+                <field name="prescription_type" optional="hide"/>
+                <field name="amount_total" sum="Total"/>
+                <field name="amount_amo" sum="AMO" optional="show"/>
+                <field name="amount_amc" sum="AMC" optional="show"/>
+                <field name="amount_patient" sum="Patient" optional="show"/>
+                <field name="amount_fees" sum="Honoraires" optional="hide"/>
+                <field name="margin" sum="Marge" optional="hide"/>
+                <field name="state" widget="badge" decoration-success="state == 'done'"
+                       decoration-info="state == 'draft'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_pharma_prescription_form" model="ir.ui.view">
+        <field name="name">pharma.prescription.form</field>
+        <field name="model">pharma.prescription</field>
+        <field name="arch" type="xml">
+            <form string="Ordonnance">
+                <header>
+                    <button name="action_dispense" type="object" string="Délivrer" class="btn-primary"
+                            invisible="state != 'draft'"/>
+                    <button name="action_cancel" type="object" string="Annuler" invisible="state != 'draft'"/>
+                    <button name="action_draft" type="object" string="Remettre en cours" invisible="state != 'cancel'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_picking" type="object" class="oe_stat_button"
+                                icon="fa-truck" invisible="not picking_id" string="Sortie de stock"/>
+                        <button name="action_view_invoices" type="object" class="oe_stat_button"
+                                icon="fa-file-text-o" invisible="not invoice_count">
+                            <field name="invoice_count" widget="statinfo" string="Factures"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="patient_id" readonly="state != 'draft'"
+                                   context="{'default_pharma_partner_type': 'patient'}"/>
+                            <field name="prescriber_id" readonly="state != 'draft'"
+                                   context="{'default_pharma_partner_type': 'prescriber'}"/>
+                            <field name="prescription_type" readonly="state != 'draft'"/>
+                        </group>
+                        <group>
+                            <field name="prescription_date" readonly="state != 'draft'"/>
+                            <field name="dispensing_date" readonly="state != 'draft'"/>
+                            <field name="renewal_index" readonly="state != 'draft'"/>
+                            <field name="warehouse_id" groups="stock.group_stock_multi_warehouses"
+                                   readonly="state != 'draft'"/>
+                            <field name="company_id" groups="base.group_multi_company" readonly="1"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Médicaments délivrés" name="lines">
+                            <field name="line_ids" readonly="state != 'draft'">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="product_id"/>
+                                    <field name="prescribed_product_id" optional="hide"/>
+                                    <field name="quantity"/>
+                                    <field name="ald_related" optional="show"
+                                           column_invisible="parent.prescription_type != 'bizone'"/>
+                                    <field name="non_substitutable" optional="hide"/>
+                                    <field name="substitution_refused" optional="hide"/>
+                                    <field name="is_substitution" optional="hide"/>
+                                    <field name="reimbursement_rate"/>
+                                    <field name="unit_price"/>
+                                    <field name="box_fee" optional="show"/>
+                                    <field name="base_unit" optional="hide"/>
+                                    <field name="amount_total"/>
+                                    <field name="amount_amo"/>
+                                    <field name="amount_amc"/>
+                                    <field name="amount_patient"/>
+                                    <field name="lot_names" optional="hide"/>
+                                    <field name="margin" optional="hide" groups="pharma_fr_base.group_pharma_manager"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Honoraires d'ordonnance" name="fees">
+                            <field name="fee_ids" readonly="1">
+                                <list>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="rule_id"/>
+                                    <field name="amount_total"/>
+                                    <field name="reimbursement_rate"/>
+                                    <field name="amount_amo"/>
+                                    <field name="amount_amc"/>
+                                    <field name="amount_patient"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Notes" name="notes">
+                            <field name="note"/>
+                        </page>
+                    </notebook>
+                    <group class="oe_subtotal_footer">
+                        <field name="amount_total"/>
+                        <field name="amount_amo"/>
+                        <field name="amount_amc"/>
+                        <field name="amount_patient" class="oe_subtotal_footer_separator"/>
+                        <field name="amount_fees"/>
+                        <field name="margin" groups="pharma_fr_base.group_pharma_manager"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_pharma_prescription_search" model="ir.ui.view">
+        <field name="name">pharma.prescription.search</field>
+        <field name="model">pharma.prescription</field>
+        <field name="arch" type="xml">
+            <search string="Ordonnances">
+                <field name="name"/>
+                <field name="patient_id"/>
+                <field name="prescriber_id"/>
+                <field name="line_ids" string="Article" filter_domain="[('line_ids.product_id', 'ilike', self)]"/>
+                <filter name="draft" string="En cours" domain="[('state', '=', 'draft')]"/>
+                <filter name="done" string="Délivrées" domain="[('state', '=', 'done')]"/>
+                <separator/>
+                <filter name="today" string="Aujourd'hui"
+                        domain="[('dispensing_date', '&gt;=', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter name="dispensing_date" string="Date de délivrance" date="dispensing_date"/>
+                <filter name="secure" string="Ordonnances sécurisées" domain="[('prescription_type', '=', 'secure')]"/>
+                <filter name="group_prescriber" string="Prescripteur" context="{'group_by': 'prescriber_id'}"/>
+                <filter name="group_day" string="Jour" context="{'group_by': 'dispensing_date:day'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_pharma_prescription_pivot" model="ir.ui.view">
+        <field name="name">pharma.prescription.pivot</field>
+        <field name="model">pharma.prescription</field>
+        <field name="arch" type="xml">
+            <pivot string="Analyse des ordonnances">
+                <field name="dispensing_date" interval="month" type="row"/>
+                <field name="amount_total" type="measure"/>
+                <field name="amount_fees" type="measure"/>
+                <field name="margin" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_pharma_prescription_graph" model="ir.ui.view">
+        <field name="name">pharma.prescription.graph</field>
+        <field name="model">pharma.prescription</field>
+        <field name="arch" type="xml">
+            <graph string="Chiffre d'affaires ordonnances" type="line">
+                <field name="dispensing_date" interval="day"/>
+                <field name="amount_total" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="action_pharma_prescription" model="ir.actions.act_window">
+        <field name="name">Ordonnances</field>
+        <field name="res_model">pharma.prescription</field>
+        <field name="view_mode">list,form,pivot,graph</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Aucune ordonnance</p>
+            <p>Saisissez une ordonnance : patient, prescripteur et médicaments délivrés.
+               Les honoraires et la répartition AMO / AMC / patient sont calculés
+               automatiquement ; la délivrance sort le stock (FEFO) et facture chaque payeur.</p>
+        </field>
+    </record>
+
+    <record id="view_pharma_prescription_line_pivot" model="ir.ui.view">
+        <field name="name">pharma.prescription.line.pivot</field>
+        <field name="model">pharma.prescription.line</field>
+        <field name="arch" type="xml">
+            <pivot string="Lignes délivrées">
+                <field name="product_tmpl_id" type="row"/>
+                <field name="quantity" type="measure"/>
+                <field name="amount_untaxed" type="measure"/>
+                <field name="margin" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_pharma_prescription_line_list" model="ir.ui.view">
+        <field name="name">pharma.prescription.line.list</field>
+        <field name="model">pharma.prescription.line</field>
+        <field name="arch" type="xml">
+            <list string="Lignes délivrées" create="0">
+                <field name="currency_id" column_invisible="1"/>
+                <field name="dispensing_date"/>
+                <field name="prescription_id"/>
+                <field name="product_id"/>
+                <field name="quantity" sum="Boîtes"/>
+                <field name="is_substitution" optional="show"/>
+                <field name="amount_untaxed" sum="CA HT"/>
+                <field name="margin" sum="Marge"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_pharma_prescription_line" model="ir.actions.act_window">
+        <field name="name">Analyse des délivrances</field>
+        <field name="res_model">pharma.prescription.line</field>
+        <field name="view_mode">pivot,list</field>
+        <field name="domain">[('state', '=', 'done')]</field>
+    </record>
+</odoo>

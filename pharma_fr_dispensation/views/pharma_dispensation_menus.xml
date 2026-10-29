@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_pharma_dispensation" name="Dispensation" parent="pharma_fr_base.menu_pharma_root" sequence="5"/>
+    <menuitem id="menu_pharma_prescription" name="Ordonnances" parent="menu_pharma_dispensation"
+              action="action_pharma_prescription" sequence="10"/>
+    <menuitem id="menu_pharma_patient" name="Patients" parent="menu_pharma_dispensation"
+              action="action_pharma_patient" sequence="20"/>
+    <menuitem id="menu_pharma_prescriber" name="Prescripteurs" parent="menu_pharma_dispensation"
+              action="action_pharma_prescriber" sequence="30"/>
+    <menuitem id="menu_pharma_insurer" name="Organismes payeurs" parent="menu_pharma_dispensation"
+              action="action_pharma_insurer" sequence="40"/>
+    <menuitem id="menu_pharma_prescription_line" name="Analyse des délivrances" parent="menu_pharma_dispensation"
+              action="action_pharma_prescription_line" sequence="50"
+              groups="pharma_fr_base.group_pharma_manager"/>
+
+    <menuitem id="menu_pharma_fee_rule" name="Honoraires de dispensation" parent="pharma_fr_base.menu_pharma_config"
+              action="action_pharma_fee_rule" sequence="30"/>
+</odoo>

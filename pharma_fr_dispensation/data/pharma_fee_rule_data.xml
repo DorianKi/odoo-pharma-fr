@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!--
+        Barème des honoraires d'ordonnance (convention pharmaceutique et avenants).
+        Montants TTC à vérifier et à compléter par une nouvelle ligne datée à chaque
+        revalorisation : Pharmacie > Configuration > Honoraires de dispensation.
+        Le taux AMO de 70 % est une valeur par défaut, l'honoraire d'ordonnance
+        complexe étant exonéré du ticket modérateur (pris en charge à 100 %).
+    -->
+    <record id="fee_prescription_2026" model="pharma.fee.rule">
+        <field name="code">prescription</field>
+        <field name="name">Honoraire d'exécution d'ordonnance</field>
+        <field name="amount">0.61</field>
+        <field name="reimbursement_rate">70</field>
+        <field name="date_from">2026-01-01</field>
+        <field name="product_id" ref="product_fee_prescription"/>
+        <field name="source">Avenant économique du 10 juin 2025</field>
+    </record>
+    <record id="fee_age_2026" model="pharma.fee.rule">
+        <field name="code">age</field>
+        <field name="name">Honoraire lié à l'âge</field>
+        <field name="amount">1.68</field>
+        <field name="reimbursement_rate">70</field>
+        <field name="date_from">2026-01-01</field>
+        <field name="product_id" ref="product_fee_age"/>
+        <field name="source">Avenant économique du 10 juin 2025</field>
+    </record>
+    <record id="fee_complex_2020" model="pharma.fee.rule">
+        <field name="code">complex</field>
+        <field name="name">Honoraire d'ordonnance complexe</field>
+        <field name="amount">0.30</field>
+        <field name="reimbursement_rate">100</field>
+        <field name="date_from">2020-01-01</field>
+        <field name="product_id" ref="product_fee_complex"/>
+        <field name="source">Avenant n° 19</field>
+    </record>
+    <record id="fee_specific_2020" model="pharma.fee.rule">
+        <field name="code">specific</field>
+        <field name="name">Honoraire de dispensation de médicaments spécifiques</field>
+        <field name="amount">3.57</field>
+        <field name="reimbursement_rate">70</field>
+        <field name="date_from">2020-01-01</field>
+        <field name="product_id" ref="product_fee_specific"/>
+        <field name="source">Avenant n° 11</field>
+    </record>
+</odoo>

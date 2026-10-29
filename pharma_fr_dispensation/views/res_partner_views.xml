@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_partner_form_pharma_dispensation" model="ir.ui.view">
+        <field name="name">res.partner.form.pharma.dispensation</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Dossier patient" name="pharma_patient"
+                      invisible="pharma_partner_type != 'patient'" groups="pharma_fr_base.group_pharma_user">
+                    <group>
+                        <group string="Identité">
+                            <field name="pharma_birthdate"/>
+                            <field name="pharma_age"/>
+                            <field name="pharma_nir" placeholder="1 85 05 78 006 084 91"/>
+                        </group>
+                        <group string="Couverture">
+                            <field name="pharma_amo_id"/>
+                            <field name="pharma_amc_id"/>
+                            <field name="pharma_amc_coverage" invisible="not pharma_amc_id"/>
+                            <field name="pharma_exemption"/>
+                            <field name="pharma_tiers_payant"/>
+                        </group>
+                    </group>
+                </page>
+                <page string="Prescripteur" name="pharma_prescriber"
+                      invisible="pharma_partner_type != 'prescriber'" groups="pharma_fr_base.group_pharma_user">
+                    <group>
+                        <field name="pharma_rpps"/>
+                        <field name="pharma_specialty"/>
+                    </group>
+                </page>
+                <page string="Organisme payeur" name="pharma_insurer"
+                      invisible="pharma_partner_type != 'insurer'" groups="pharma_fr_base.group_pharma_user">
+                    <group>
+                        <field name="pharma_insurer_type"/>
+                        <field name="pharma_insurer_code"/>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_partner_list_pharma_patient" model="ir.ui.view">
+        <field name="name">res.partner.list.pharma.patient</field>
+        <field name="model">res.partner</field>
+        <field name="mode">primary</field>
+        <field name="priority">60</field>
+        <field name="arch" type="xml">
+            <list string="Patients">
+                <field name="name"/>
+                <field name="pharma_birthdate"/>
+                <field name="pharma_age"/>
+                <field name="pharma_amo_id"/>
+                <field name="pharma_amc_id"/>
+                <field name="pharma_exemption"/>
+                <field name="phone" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_pharma_patient" model="ir.actions.act_window">
+        <field name="name">Patients</field>
+        <field name="res_model">res.partner</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('pharma_partner_type', '=', 'patient')]</field>
+        <field name="context">{'default_pharma_partner_type': 'patient', 'default_is_company': False}</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('view_partner_list_pharma_patient')}),
+            (0, 0, {'view_mode': 'form'})]"/>
+    </record>
+
+    <record id="action_pharma_prescriber" model="ir.actions.act_window">
+        <field name="name">Prescripteurs</field>
+        <field name="res_model">res.partner</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('pharma_partner_type', '=', 'prescriber')]</field>
+        <field name="context">{'default_pharma_partner_type': 'prescriber', 'default_is_company': False}</field>
+    </record>
+
+    <record id="action_pharma_insurer" model="ir.actions.act_window">
+        <field name="name">Organismes payeurs</field>
+        <field name="res_model">res.partner</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('pharma_partner_type', '=', 'insurer')]</field>
+        <field name="context">{'default_pharma_partner_type': 'insurer', 'default_is_company': True}</field>
+    </record>
+</odoo>

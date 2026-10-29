@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- La délivrance crée la sortie de stock et les factures (patient, AMO, AMC). -->
+    <record id="pharma_fr_base.group_pharma_user" model="res.groups">
+        <field name="implied_ids" eval="[(4, ref('account.group_account_invoice'))]"/>
+    </record>
+
+    <record id="rule_pharma_prescription_company" model="ir.rule">
+        <field name="name">Ordonnances : multi-société</field>
+        <field name="model_id" ref="model_pharma_prescription"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+</odoo>
