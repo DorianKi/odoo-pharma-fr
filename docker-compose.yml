@@ -8,8 +8,20 @@ services:
       POSTGRES_DB: postgres
       POSTGRES_USER: odoo
       POSTGRES_PASSWORD: odoo
+    ports:
+      - "127.0.0.1:5432:5432"   # accès SQL depuis votre poste (DBeaver, psql, Python)
     volumes:
       - pg-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  adminer:
+    # Interface web pour parcourir et interroger la base : http://localhost:8080
+    # Système : PostgreSQL, serveur : db, utilisateur / mot de passe : odoo / odoo
+    image: adminer
+    depends_on:
+      - db
+    ports:
+      - "127.0.0.1:8080:8080"
     restart: unless-stopped
 
   odoo:
