@@ -9,7 +9,8 @@ services:
       POSTGRES_USER: odoo
       POSTGRES_PASSWORD: odoo
     ports:
-      - "127.0.0.1:5432:5432"   # accès SQL depuis votre poste (DBeaver, psql, Python)
+      # Port 5433 côté poste : le 5432 est souvent déjà pris par un PostgreSQL local.
+      - "127.0.0.1:5433:5432"   # accès SQL : localhost:5433 (DBeaver, psql, Python)
     volumes:
       - pg-data:/var/lib/postgresql/data
     restart: unless-stopped
