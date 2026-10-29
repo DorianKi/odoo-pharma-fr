@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_pharma_specialite_list" model="ir.ui.view">
+        <field name="name">pharma.specialite.list</field>
+        <field name="model">pharma.specialite</field>
+        <field name="arch" type="xml">
+            <list string="Spécialités" decoration-muted="not is_marketed"
+                  decoration-danger="availability_status == 'shortage'"
+                  decoration-warning="availability_status == 'tension'">
+                <field name="cis_code"/>
+                <field name="name"/>
+                <field name="active_substances" optional="show"/>
+                <field name="pharmaceutical_form" optional="hide"/>
+                <field name="laboratory_id" optional="show"/>
+                <field name="generic_type" optional="show"/>
+                <field name="prescription_list" optional="show"/>
+                <field name="availability_status" optional="show"/>
+                <field name="is_mitm" optional="hide"/>
+                <field name="is_marketed" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_pharma_specialite_form" model="ir.ui.view">
+        <field name="name">pharma.specialite.form</field>
+        <field name="model">pharma.specialite</field>
+        <field name="arch" type="xml">
+            <form string="Spécialité">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_presentations" type="object"
+                                class="oe_stat_button" icon="fa-cubes">
+                            <field name="presentation_count" widget="statinfo" string="Présentations"/>
+                        </button>
+                    </div>
+                    <widget name="web_ribbon" title="Rupture" bg_color="text-bg-danger"
+                            invisible="availability_status != 'shortage'"/>
+                    <widget name="web_ribbon" title="Tension" bg_color="text-bg-warning"
+                            invisible="availability_status != 'tension'"/>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name"/></h1>
+                        <field name="active_substances" class="text-muted"/>
+                    </div>
+                    <group>
+                        <group string="Identification">
+                            <field name="cis_code"/>
+                            <field name="pharmaceutical_form"/>
+                            <field name="administration_routes"/>
+                            <field name="laboratory_id"/>
+                            <field name="holder"/>
+                            <field name="atc_code"/>
+                        </group>
+                        <group string="AMM et commercialisation">
+                            <field name="amm_status"/>
+                            <field name="amm_procedure"/>
+                            <field name="amm_date"/>
+                            <field name="eu_authorisation_number"/>
+                            <field name="marketing_status"/>
+                            <field name="is_marketed"/>
+                            <field name="bdm_status"/>
+                            <field name="reinforced_monitoring"/>
+                        </group>
+                        <group string="Génériques">
+                            <field name="generic_group_id"/>
+                            <field name="generic_type"/>
+                        </group>
+                        <group string="Prescription et délivrance">
+                            <field name="prescription_list"/>
+                            <field name="narcotic_rules"/>
+                            <field name="hospital_reserved"/>
+                            <field name="special_prescription"/>
+                            <field name="is_mitm"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Composition" name="composition">
+                            <field name="composition_ids">
+                                <list editable="bottom">
+                                    <field name="element"/>
+                                    <field name="substance_code" optional="hide"/>
+                                    <field name="substance_name"/>
+                                    <field name="dosage"/>
+                                    <field name="dosage_reference"/>
+                                    <field name="nature"/>
+                                    <field name="link_number" optional="hide"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Présentations" name="presentations">
+                            <field name="presentation_ids" readonly="1">
+                                <list>
+                                    <field name="cip13"/>
+                                    <field name="name"/>
+                                    <field name="reimbursement_rate"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="price_ttc"/>
+                                    <field name="is_marketed"/>
+                                    <field name="product_tmpl_id"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Conditions de prescription" name="conditions">
+                            <field name="prescription_conditions"/>
+                        </page>
+                        <page string="Disponibilité (ANSM)" name="availability">
+                            <group>
+                                <field name="availability_status"/>
+                                <field name="availability_date"/>
+                                <field name="availability_restore_date"/>
+                                <field name="availability_url" widget="url"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_pharma_specialite_search" model="ir.ui.view">
+        <field name="name">pharma.specialite.search</field>
+        <field name="model">pharma.specialite</field>
+        <field name="arch" type="xml">
+            <search string="Spécialités">
+                <field name="name"/>
+                <field name="cis_code"/>
+                <field name="active_substances"/>
+                <field name="laboratory_id"/>
+                <field name="generic_group_id"/>
+                <field name="atc_code"/>
+                <filter name="marketed" string="Commercialisées" domain="[('is_marketed', '=', True)]"/>
+                <separator/>
+                <filter name="princeps" string="Princeps" domain="[('generic_type', '=', 'princeps')]"/>
+                <filter name="generic" string="Génériques"
+                        domain="[('generic_type', 'in', ('generic', 'generic_posology', 'generic_substitutable'))]"/>
+                <separator/>
+                <filter name="list_1" string="Liste I" domain="[('prescription_list', '=', 'list_1')]"/>
+                <filter name="list_2" string="Liste II" domain="[('prescription_list', '=', 'list_2')]"/>
+                <filter name="narcotic" string="Stupéfiants et assimilés"
+                        domain="['|', ('prescription_list', '=', 'narcotic'), ('narcotic_rules', '=', True)]"/>
+                <separator/>
+                <filter name="shortage" string="Rupture / tension"
+                        domain="[('availability_status', 'in', ('shortage', 'tension'))]"/>
+                <filter name="mitm" string="MITM" domain="[('is_mitm', '=', True)]"/>
+                <filter name="group_laboratory" string="Laboratoire" context="{'group_by': 'laboratory_id'}"/>
+                <filter name="group_list" string="Liste" context="{'group_by': 'prescription_list'}"/>
+                <filter name="group_form" string="Forme" context="{'group_by': 'pharmaceutical_form'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_pharma_specialite" model="ir.actions.act_window">
+        <field name="name">Spécialités</field>
+        <field name="res_model">pharma.specialite</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_marketed': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Aucune spécialité</p>
+            <p>Importez la base de données publique des médicaments via
+               Pharmacie &gt; Configuration &gt; Import BDPM.</p>
+        </field>
+    </record>
+</odoo>

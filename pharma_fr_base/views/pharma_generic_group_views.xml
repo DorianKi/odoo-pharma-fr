@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_pharma_generic_group_list" model="ir.ui.view">
+        <field name="name">pharma.generic.group.list</field>
+        <field name="model">pharma.generic.group</field>
+        <field name="arch" type="xml">
+            <list string="Groupes génériques">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="princeps_id"/>
+                <field name="generic_count"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_pharma_generic_group_form" model="ir.ui.view">
+        <field name="name">pharma.generic.group.form</field>
+        <field name="model">pharma.generic.group</field>
+        <field name="arch" type="xml">
+            <form string="Groupe générique">
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <field name="code"/>
+                        <field name="princeps_id"/>
+                        <field name="generic_count"/>
+                    </group>
+                    <field name="specialite_ids" readonly="1">
+                        <list>
+                            <field name="cis_code"/>
+                            <field name="name"/>
+                            <field name="generic_type"/>
+                            <field name="laboratory_id"/>
+                            <field name="availability_status"/>
+                        </list>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_pharma_generic_group_search" model="ir.ui.view">
+        <field name="name">pharma.generic.group.search</field>
+        <field name="model">pharma.generic.group</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="specialite_ids" string="Spécialité"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_pharma_generic_group" model="ir.actions.act_window">
+        <field name="name">Groupes génériques</field>
+        <field name="res_model">pharma.generic.group</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

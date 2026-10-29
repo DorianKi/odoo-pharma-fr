@@ -1,0 +1,7 @@
+60000001	PARACETAMOL DEMOPHARM 1000 mg, comprimé	comprimé	orale	Autorisation active	Procédure nationale	Commercialisée	12/05/2001			LABORATOIRES DEMOPHARM	Non
+60000002	PARACETAMOL GENERIX 1000 mg, comprimé	comprimé	orale	Autorisation active	Procédure nationale	Commercialisée	03/02/2010			GENERIX FRANCE;GENERIX EUROPE	Non
+60000003	AMOXICILLINE GENERIX 1 g, comprimé dispersible	comprimé dispersible	orale	Autorisation active	Procédure nationale	Commercialisée	20/09/2008			GENERIX FRANCE	Non
+60000004	IBUPROFENE DEMOPHARM 400 mg, comprimé pelliculé	comprimé pelliculé	orale	Autorisation active	Procédure de reconnaissance mutuelle	Commercialisée	01/06/2005	Alerte		LABORATOIRES DEMOPHARM	Non
+60000005	MORPHINE DEMOPHARM LP 10 mg, gélule à libération prolongée	gélule à libération prolongée	orale	Autorisation active	Procédure nationale	Commercialisée	15/01/1999			LABORATOIRES DEMOPHARM	Oui
+60000006	ZOLPIDEM GENERIX 10 mg, comprimé pelliculé sécable	comprimé pelliculé sécable	orale	Autorisation active	Procédure nationale	Commercialisée	11/11/2011			GENERIX FRANCE	Non
+60000007	ANCIEN PRODUIT DEMO 5 mg, comprimé	comprimé	orale	Autorisation abrogée	Procédure nationale	Non commercialisée	01/01/1990			LABORATOIRES DEMOPHARM	Non

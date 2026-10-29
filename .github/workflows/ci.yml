@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/ruff-action@v3
+
+  parser-tests:
+    # Le parseur BDPM est en Python pur : testable sans Odoo.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m doctest -v pharma_fr_base/lib/bdpm.py
+
+  odoo-tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: odoo
+          POSTGRES_PASSWORD: odoo
+          POSTGRES_DB: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    container:
+      image: odoo:19
+      options: --user root
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tests du module
+        run: |
+          odoo -d ci --db_host=postgres --db_user=odoo --db_password=odoo \
+            --addons-path=$GITHUB_WORKSPACE,/usr/lib/python3/dist-packages/odoo/addons \
+            -i pharma_fr_base --test-tags=/pharma_fr_base --stop-after-init --no-http

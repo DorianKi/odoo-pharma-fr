@@ -1,0 +1,7 @@
+60000001	3000001	plaquette(s) PVC aluminium de 8 comprimé(s)	Présentation active	Déclaration de commercialisation	12/05/2001	3400930000011	oui	65%	1,16	2,18	1,02	
+60000002	3000002	plaquette(s) PVC aluminium de 8 comprimé(s)	Présentation active	Déclaration de commercialisation	03/02/2010	3400930000028	oui	65 %	0,99	2,01	1,02	
+60000003	3000003	plaquette(s) PVC aluminium de 6 comprimé(s)	Présentation active	Déclaration de commercialisation	20/09/2008	3400930000035	oui	65%	3,52	4,54	1,02	
+60000004	3000004	plaquette(s) PVC aluminium de 30 comprimé(s)	Présentation active	Déclaration de commercialisation	01/06/2005	3400930000042	non					
+60000005	3000005	plaquette(s) PVC aluminium de 14 gélule(s)	Présentation active	Déclaration de commercialisation	15/01/1999	3400930000059	oui	65%;100%	1 234,56	1 235,58	1,02	Indications ALD : 100%
+60000006	3000006	plaquette(s) PVC aluminium de 7 comprimé(s)	Présentation active	Déclaration de commercialisation	11/11/2011	3400930000066	oui	15%	1,72	2,74	1,02	
+60000007	3000007	flacon de 30 comprimé(s)	Présentation abrogée	Déclaration d'arrêt de commercialisation	01/01/1990	3400930000073	non					

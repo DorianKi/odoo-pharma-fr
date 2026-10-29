@@ -1,0 +1,7 @@
+60000003	liste I
+60000004	liste II
+60000005	stupéfiant
+60000005	prescription limitée à 28 jours
+60000006	liste I
+60000006	prescription en toutes lettres sur ordonnance sécurisée (règles de prescription des stupéfiants)
+60000007	réservé à l'usage HOSPITALIER

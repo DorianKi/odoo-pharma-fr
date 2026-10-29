@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Mise à jour mensuelle de la base médicament depuis un répertoire du serveur
+         (paramètre système pharma_fr_base.bdpm_directory, alimenté par
+         scripts/download_bdpm.sh). Désactivée par défaut. -->
+    <record id="ir_cron_bdpm_import_directory" model="ir.cron">
+        <field name="name">Pharmacie : mise à jour de la base BDPM</field>
+        <field name="model_id" ref="model_pharma_bdpm_importer"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_import_directory()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">months</field>
+        <field name="active" eval="False"/>
+    </record>
+</odoo>

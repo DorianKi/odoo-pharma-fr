@@ -1,0 +1,7 @@
+60000001	comprimé	02202	PARACÉTAMOL	1000 mg	un comprimé	SA	1
+60000002	comprimé	02202	PARACÉTAMOL	1000 mg	un comprimé	SA	1
+60000003	comprimé	00321	AMOXICILLINE TRIHYDRATÉE	1,148 g	un comprimé	SA	1
+60000003	comprimé	00320	AMOXICILLINE	1 g	un comprimé	FT	1
+60000004	comprimé	01234	IBUPROFÈNE	400 mg	un comprimé	SA	1
+60000005	gélule	04567	SULFATE DE MORPHINE	10 mg	une gélule	SA	1
+60000006	comprimé	07890	TARTRATE DE ZOLPIDEM	10 mg	un comprimé	SA	1

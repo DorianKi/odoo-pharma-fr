@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_pharma_presentation_list" model="ir.ui.view">
+        <field name="name">pharma.presentation.list</field>
+        <field name="model">pharma.presentation</field>
+        <field name="arch" type="xml">
+            <list string="Présentations" decoration-muted="not is_marketed">
+                <header>
+                    <button name="action_create_products" type="object"
+                            string="Référencer comme articles" class="btn-primary"
+                            groups="pharma_fr_base.group_pharma_manager"/>
+                </header>
+                <field name="cip13"/>
+                <field name="specialite_id"/>
+                <field name="name" optional="show"/>
+                <field name="laboratory_id" optional="hide"/>
+                <field name="generic_type" optional="show"/>
+                <field name="prescription_list" optional="hide"/>
+                <field name="reimbursement_rate"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="price_ttc" sum="Total"/>
+                <field name="dispensing_fee" optional="hide"/>
+                <field name="availability_status" optional="hide"/>
+                <field name="is_marketed" optional="hide"/>
+                <field name="product_tmpl_id" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_pharma_presentation_form" model="ir.ui.view">
+        <field name="name">pharma.presentation.form</field>
+        <field name="model">pharma.presentation</field>
+        <field name="arch" type="xml">
+            <form string="Présentation">
+                <header>
+                    <button name="action_create_products" type="object"
+                            string="Référencer comme article" class="btn-primary"
+                            invisible="product_tmpl_id"
+                            groups="pharma_fr_base.group_pharma_manager"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_product" type="object" class="oe_stat_button"
+                                icon="fa-shopping-basket" invisible="not product_tmpl_id"
+                                string="Article officine"/>
+                    </div>
+                    <div class="oe_title">
+                        <label for="cip13"/>
+                        <h1><field name="cip13"/></h1>
+                        <h3><field name="specialite_id"/></h3>
+                    </div>
+                    <group>
+                        <group string="Présentation">
+                            <field name="name"/>
+                            <field name="cip7"/>
+                            <field name="admin_status"/>
+                            <field name="marketing_status"/>
+                            <field name="marketing_date"/>
+                            <field name="is_marketed"/>
+                            <field name="community_approval"/>
+                            <field name="product_tmpl_id"/>
+                        </group>
+                        <group string="Prix et remboursement">
+                            <field name="currency_id" invisible="1"/>
+                            <field name="reimbursement_rate"/>
+                            <field name="reimbursement_rates_raw"/>
+                            <field name="price_ttc"/>
+                            <field name="dispensing_fee"/>
+                            <field name="price_with_fees"/>
+                        </group>
+                        <group string="Spécialité">
+                            <field name="laboratory_id"/>
+                            <field name="generic_group_id"/>
+                            <field name="generic_type"/>
+                            <field name="prescription_list"/>
+                            <field name="availability_status"/>
+                        </group>
+                    </group>
+                    <group string="Indications ouvrant droit au remboursement"
+                           invisible="not reimbursement_indications">
+                        <field name="reimbursement_indications" nolabel="1" colspan="2"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_pharma_presentation_search" model="ir.ui.view">
+        <field name="name">pharma.presentation.search</field>
+        <field name="model">pharma.presentation</field>
+        <field name="arch" type="xml">
+            <search string="Présentations">
+                <field name="cip13"/>
+                <field name="cip7"/>
+                <field name="specialite_id"/>
+                <field name="laboratory_id"/>
+                <field name="generic_group_id"/>
+                <filter name="marketed" string="Commercialisées" domain="[('is_marketed', '=', True)]"/>
+                <separator/>
+                <filter name="reimbursable" string="Remboursables" domain="[('is_reimbursable', '=', True)]"/>
+                <filter name="not_reimbursable" string="Non remboursables" domain="[('is_reimbursable', '=', False)]"/>
+                <separator/>
+                <filter name="referenced" string="Référencées" domain="[('is_referenced', '=', True)]"/>
+                <filter name="not_referenced" string="Non référencées" domain="[('is_referenced', '=', False)]"/>
+                <separator/>
+                <filter name="generic" string="Génériques"
+                        domain="[('generic_type', 'in', ('generic', 'generic_posology', 'generic_substitutable'))]"/>
+                <filter name="princeps" string="Princeps" domain="[('generic_type', '=', 'princeps')]"/>
+                <filter name="group_rate" string="Taux de remboursement" context="{'group_by': 'reimbursement_rate'}"/>
+                <filter name="group_laboratory" string="Laboratoire" context="{'group_by': 'laboratory_id'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_pharma_presentation" model="ir.actions.act_window">
+        <field name="name">Présentations (CIP)</field>
+        <field name="res_model">pharma.presentation</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_marketed': 1}</field>
+    </record>
+</odoo>

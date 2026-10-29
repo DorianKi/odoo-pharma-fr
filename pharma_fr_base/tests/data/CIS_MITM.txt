@@ -1,0 +1,2 @@
+60000003	J01CA04	AMOXICILLINE GENERIX 1 g, comprimé dispersible	https://base-donnees-publique.medicaments.gouv.fr/extrait.php?specid=60000003
+60000005	N02AA01	MORPHINE DEMOPHARM LP 10 mg	https://base-donnees-publique.medicaments.gouv.fr/extrait.php?specid=60000005

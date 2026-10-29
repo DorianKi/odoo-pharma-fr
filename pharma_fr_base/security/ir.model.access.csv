@@ -1,0 +1,10 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_pharma_specialite_user,pharma.specialite.user,model_pharma_specialite,group_pharma_user,1,0,0,0
+access_pharma_specialite_manager,pharma.specialite.manager,model_pharma_specialite,group_pharma_manager,1,1,1,1
+access_pharma_presentation_user,pharma.presentation.user,model_pharma_presentation,group_pharma_user,1,0,0,0
+access_pharma_presentation_manager,pharma.presentation.manager,model_pharma_presentation,group_pharma_manager,1,1,1,1
+access_pharma_generic_group_user,pharma.generic.group.user,model_pharma_generic_group,group_pharma_user,1,0,0,0
+access_pharma_generic_group_manager,pharma.generic.group.manager,model_pharma_generic_group,group_pharma_manager,1,1,1,1
+access_pharma_composition_user,pharma.composition.user,model_pharma_composition,group_pharma_user,1,0,0,0
+access_pharma_composition_manager,pharma.composition.manager,model_pharma_composition,group_pharma_manager,1,1,1,1
+access_pharma_bdpm_import_wizard_manager,pharma.bdpm.import.wizard.manager,model_pharma_bdpm_import_wizard,group_pharma_manager,1,1,1,1

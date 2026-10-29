@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="product_template_form_view_pharma" model="ir.ui.view">
+        <field name="name">product.template.form.pharma</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Pharmacie" name="pharmacy">
+                    <group>
+                        <group string="Classification">
+                            <field name="pharma_category"/>
+                            <field name="pharma_presentation_id"/>
+                            <field name="pharma_specialite_id" invisible="not pharma_specialite_id"/>
+                            <field name="pharma_active_substances" invisible="not pharma_specialite_id"/>
+                            <field name="pharma_cip13" invisible="not pharma_presentation_id"/>
+                            <field name="pharma_cip7" invisible="not pharma_presentation_id"/>
+                            <field name="pharma_acl13" invisible="pharma_presentation_id"/>
+                            <field name="pharma_laboratory_id"/>
+                        </group>
+                        <group string="Prix et TVA">
+                            <field name="pharma_price_regime"/>
+                            <field name="pharma_reimbursement_rate" invisible="not pharma_presentation_id"/>
+                            <field name="pharma_public_price" invisible="not pharma_presentation_id"/>
+                            <field name="pharma_dispensing_fee" invisible="not pharma_presentation_id"/>
+                            <field name="pharma_vat_rate"/>
+                        </group>
+                        <group string="Réglementation" invisible="not pharma_specialite_id">
+                            <field name="pharma_prescription_list"/>
+                            <field name="pharma_is_narcotic"/>
+                            <field name="pharma_generic_type"/>
+                            <field name="pharma_generic_group_id"/>
+                        </group>
+                        <group string="Disponibilité nationale" invisible="not pharma_specialite_id">
+                            <field name="pharma_availability_status"/>
+                            <field name="pharma_is_mitm"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="product_template_list_view_pharma" model="ir.ui.view">
+        <field name="name">product.template.list.pharma</field>
+        <field name="model">product.template</field>
+        <field name="mode">primary</field>
+        <field name="priority">50</field>
+        <field name="arch" type="xml">
+            <list string="Articles officine" multi_edit="1"
+                  decoration-danger="pharma_availability_status == 'shortage'"
+                  decoration-warning="pharma_availability_status == 'tension'">
+                <header>
+                    <button name="action_pharma_apply_vat" type="object" string="Appliquer la TVA officine"
+                            groups="pharma_fr_base.group_pharma_manager"/>
+                </header>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="barcode" string="CIP13 / EAN"/>
+                <field name="name"/>
+                <field name="pharma_category"/>
+                <field name="pharma_laboratory_id" optional="show"/>
+                <field name="pharma_generic_type" optional="show"/>
+                <field name="pharma_prescription_list" optional="hide"/>
+                <field name="pharma_reimbursement_rate" optional="show"/>
+                <field name="pharma_vat_rate" optional="show"/>
+                <field name="list_price" widget="monetary" optional="show"/>
+                <field name="standard_price" widget="monetary" optional="show"/>
+                <field name="qty_available" optional="show"/>
+                <field name="pharma_availability_status" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="product_template_search_view_pharma" model="ir.ui.view">
+        <field name="name">product.template.search.pharma</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_search_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='categ_id']" position="after">
+                <field name="pharma_cip13"/>
+                <field name="pharma_specialite_id"/>
+                <field name="pharma_laboratory_id"/>
+                <field name="pharma_generic_group_id"/>
+            </xpath>
+            <xpath expr="//filter[@name='goods']" position="before">
+                <filter name="pharma_drug_reimbursed" string="Médicaments remboursables"
+                        domain="[('pharma_category', '=', 'drug_reimbursed')]"/>
+                <filter name="pharma_drug_otc" string="Médicaments non remboursables"
+                        domain="[('pharma_category', '=', 'drug_otc')]"/>
+                <filter name="pharma_parapharmacy" string="Parapharmacie"
+                        domain="[('pharma_category', '=', 'parapharmacy')]"/>
+                <filter name="pharma_medical_device" string="Dispositifs médicaux"
+                        domain="[('pharma_category', '=', 'medical_device')]"/>
+                <separator/>
+                <filter name="pharma_generic" string="Génériques"
+                        domain="[('pharma_generic_type', 'in', ('generic', 'generic_posology', 'generic_substitutable'))]"/>
+                <filter name="pharma_princeps" string="Princeps"
+                        domain="[('pharma_generic_type', '=', 'princeps')]"/>
+                <filter name="pharma_narcotic" string="Stupéfiants et assimilés"
+                        domain="[('pharma_is_narcotic', '=', True)]"/>
+                <filter name="pharma_shortage" string="Rupture / tension nationale"
+                        domain="[('pharma_availability_status', 'in', ('shortage', 'tension'))]"/>
+                <separator/>
+                <filter name="group_pharma_category" string="Catégorie officine"
+                        context="{'group_by': 'pharma_category'}"/>
+                <filter name="group_pharma_laboratory" string="Laboratoire"
+                        context="{'group_by': 'pharma_laboratory_id'}"/>
+                <filter name="group_pharma_vat" string="TVA officine"
+                        context="{'group_by': 'pharma_vat_rate'}"/>
+                <separator/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_pharma_product_template" model="ir.actions.act_window">
+        <field name="name">Articles officine</field>
+        <field name="res_model">product.template</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="domain">[('pharma_category', '!=', False)]</field>
+        <field name="context">{'default_pharma_category': 'parapharmacy', 'default_is_storable': True}</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('product_template_list_view_pharma')}),
+            (0, 0, {'view_mode': 'kanban'}),
+            (0, 0, {'view_mode': 'form'})]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Aucun article officine</p>
+            <p>Référencez des présentations de la base médicament, ou créez un
+               article de parapharmacie.</p>
+        </field>
+    </record>
+</odoo>

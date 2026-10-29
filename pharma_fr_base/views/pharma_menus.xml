@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_pharma_root" name="Pharmacie" sequence="25"
+              web_icon="pharma_fr_base,static/description/icon.png"
+              groups="pharma_fr_base.group_pharma_user"/>
+
+    <menuitem id="menu_pharma_products" name="Articles officine" parent="menu_pharma_root"
+              action="action_pharma_product_template" sequence="10"/>
+
+    <menuitem id="menu_pharma_database" name="Base médicament" parent="menu_pharma_root" sequence="50"/>
+    <menuitem id="menu_pharma_specialite" name="Spécialités" parent="menu_pharma_database"
+              action="action_pharma_specialite" sequence="10"/>
+    <menuitem id="menu_pharma_presentation" name="Présentations (CIP)" parent="menu_pharma_database"
+              action="action_pharma_presentation" sequence="20"/>
+    <menuitem id="menu_pharma_generic_group" name="Groupes génériques" parent="menu_pharma_database"
+              action="action_pharma_generic_group" sequence="30"/>
+    <menuitem id="menu_pharma_laboratory" name="Laboratoires" parent="menu_pharma_database"
+              action="action_pharma_laboratory" sequence="40"/>
+
+    <menuitem id="menu_pharma_config" name="Configuration" parent="menu_pharma_root" sequence="90"
+              groups="pharma_fr_base.group_pharma_manager"/>
+    <menuitem id="menu_pharma_bdpm_import" name="Import BDPM" parent="menu_pharma_config"
+              action="action_pharma_bdpm_import_wizard" sequence="10"/>
+</odoo>

@@ -1,0 +1,33 @@
+# Environnement local : Odoo 19 Community + PostgreSQL 16, modules montés depuis ce dépôt.
+#   docker compose up -d      puis http://localhost:8069
+# Créez une base (cochez « France »), puis Applications > « Pharmacie FR - Base produits ».
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: odoo
+      POSTGRES_PASSWORD: odoo
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  odoo:
+    image: odoo:19
+    depends_on:
+      - db
+    ports:
+      - "8069:8069"
+    environment:
+      HOST: db
+      USER: odoo
+      PASSWORD: odoo
+    volumes:
+      - ./:/mnt/extra-addons:ro
+      - ./bdpm:/mnt/bdpm:ro
+      - odoo-data:/var/lib/odoo
+    restart: unless-stopped
+
+volumes:
+  pg-data:
+  odoo-data:
