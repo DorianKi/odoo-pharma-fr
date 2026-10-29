@@ -9,8 +9,9 @@ services:
       POSTGRES_USER: odoo
       POSTGRES_PASSWORD: odoo
     ports:
-      # Port 5433 côté poste : le 5432 est souvent déjà pris par un PostgreSQL local.
-      - "127.0.0.1:5433:5432"   # accès SQL : localhost:5433 (DBeaver, psql, Python)
+      # Accès SQL depuis le poste (DBeaver, psql, Python) : localhost:55432 par défaut.
+      # Port peu courant pour éviter un PostgreSQL local ; modifiable : PG_PORT=xxxx docker compose up -d
+      - "127.0.0.1:${PG_PORT:-55432}:5432"
     volumes:
       - pg-data:/var/lib/postgresql/data
     restart: unless-stopped
@@ -22,7 +23,7 @@ services:
     depends_on:
       - db
     ports:
-      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:${ADMINER_PORT:-8080}:8080"
     restart: unless-stopped
 
   odoo:
@@ -30,7 +31,7 @@ services:
     depends_on:
       - db
     ports:
-      - "8069:8069"
+      - "${ODOO_PORT:-8069}:8069"
     environment:
       HOST: db
       USER: odoo
