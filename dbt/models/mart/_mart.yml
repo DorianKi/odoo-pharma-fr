@@ -1,0 +1,109 @@
+version: 2
+
+models:
+  - name: mart_journee
+    description: >
+      Page « Journée » : un jour par ligne, ventes, marge, missions, manquants, stock et
+      trésorerie côte à côte, avec le même jour de la semaine précédente (suffixe _s_1).
+      Dans Looker Studio, recalculer les taux (marge / CA HT) plutôt que de moyenner taux_marge.
+    columns:
+      - name: jour
+        tests: [unique, not_null]
+      - name: est_dernier_jour
+        description: Vrai pour le dernier jour de données (« hier »).
+      - name: panier_moyen_ttc
+        description: CA TTC / passages.
+      - name: ca_ttc_s_1
+        description: CA TTC du même jour, une semaine plus tôt.
+
+  - name: mart_ventes
+    description: >
+      Table large, une ligne par article vendu, portant les trois axes : stock (article,
+      rayon, classe ABC, couverture), argent (CA, marge, parts AMO / AMC / patient) et
+      patientèle (tranche d'âge, régime, statut de fidélité). Source principale des filtres
+      croisés du tableau de bord.
+    columns:
+      - name: ligne_id
+        tests: [unique, not_null]
+      - name: statut_fidelite
+        tests:
+          - accepted_values:
+              values: ['Nouveau', 'Actif', 'À risque', 'Perdu', 'Client de passage']
+
+  - name: mart_produits
+    description: >
+      Page « Stock » : un article par ligne à la date de référence. Classe ABC sur la marge
+      des 90 derniers jours (A = 80 % de la marge), rendement du stock (GMROI annualisé :
+      marge annuelle / stock moyen), surstock, péremptions, manquants, écarts d'inventaire.
+    columns:
+      - name: produit_id
+        tests: [unique, not_null]
+      - name: classe_abc
+        tests:
+          - accepted_values: {values: ['A', 'B', 'C', 'Sans vente']}
+      - name: gmroi_annuel
+        description: Euros de marge par an pour un euro de stock immobilisé.
+
+  - name: mart_stock_jour
+    description: Évolution du stock par article et par jour, avec rayon, laboratoire et classe ABC.
+
+  - name: mart_rentabilite_mois
+    description: Rentabilité par mois et par article (CA, marge, taux, stock moyen, GMROI mensuel).
+
+  - name: mart_tresorerie
+    description: >
+      Page « Argent » : trésorerie réelle jour par jour (nature = Réel) puis prévision à
+      60 jours (nature = Prévision), créances et dettes ouvertes.
+    columns:
+      - name: nature
+        tests:
+          - accepted_values: {values: ['Réel', 'Prévision']}
+
+  - name: mart_payeurs
+    description: Délai réel de paiement, encours et retards par payeur et par fournisseur.
+
+  - name: mart_patients
+    description: >
+      Page « Patients » : un patient par ligne. Statut de fidélité : Nouveau (premier
+      passage il y a moins de 30 jours) ; patient chronique À risque après 40 jours sans
+      passage, Perdu après 60 ; autre patient Perdu après 120 jours. Marge annuelle
+      estimée = marge rapportée à l'ancienneté.
+    columns:
+      - name: patient_key
+        tests: [unique, not_null]
+      - name: statut_fidelite
+        tests:
+          - accepted_values:
+              values: ['Nouveau', 'Actif', 'À risque', 'Perdu', 'Client de passage']
+      - name: manquants_avant_dernier_passage
+        description: Manquants subis dans les 60 jours précédant le dernier passage.
+
+  - name: mart_patients_mois
+    description: Patients actifs, nouveaux et partis par mois ; marge annuelle partie avec eux.
+
+  - name: mart_affluence
+    description: Passages par jour et par heure, et nombre de vendeurs qui ont encaissé.
+
+  - name: mart_equipe
+    description: Activité par vendeur et par jour, dont le conseil associé aux ordonnances.
+
+  - name: mart_generiques
+    description: Taux de substitution générique par prescripteur et par mois.
+
+  - name: mart_manquants
+    description: Manquants avec l'article, le chiffre perdu et le statut du patient.
+    columns:
+      - name: manquant_id
+        tests: [unique, not_null]
+
+  - name: mart_achats
+    description: Commandes fournisseurs avec dépannages, remises et respect du franco.
+    columns:
+      - name: commande_id
+        tests: [unique, not_null]
+
+  - name: mart_missions
+    description: Missions de santé par type, pharmacien et tranche d'âge.
+    columns:
+      - name: mission_id
+        tests: [unique, not_null]

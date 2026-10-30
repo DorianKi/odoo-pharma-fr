@@ -1,0 +1,182 @@
+version: 2
+
+models:
+  - name: dim_date
+    description: Calendrier, du premier jour d'activité à la fin de la prévision de trésorerie.
+    columns:
+      - name: jour
+        description: Jour (clé).
+        tests: [unique, not_null]
+      - name: mois
+        description: Mois au format AAAA-MM.
+      - name: jour_semaine
+        description: Lundi … Dimanche.
+      - name: jour_semaine_num
+        description: 1 = lundi … 7 = dimanche.
+      - name: est_ouvre
+        description: Faux le dimanche (officine fermée, hors garde).
+
+  - name: dim_produit
+    description: Articles vendus, achetés, stockés ou manquants.
+    columns:
+      - name: produit_id
+        description: Identifiant de l'article (clé).
+        tests: [unique, not_null]
+      - name: rayon
+        description: Médicament remboursable, Médicament non remboursable, Parapharmacie, Dispositif médical, Autre.
+        tests:
+          - accepted_values:
+              values: ['Médicament remboursable', 'Médicament non remboursable', 'Parapharmacie', 'Dispositif médical', 'Autre']
+      - name: statut_generique
+        description: Princeps, Générique ou Hors répertoire des génériques.
+        tests:
+          - accepted_values:
+              values: ['Princeps', 'Générique', 'Hors répertoire']
+      - name: est_substituable
+        description: L'article appartient à un groupe générique (substitution possible).
+
+  - name: dim_patient
+    description: >
+      Patients pseudonymisés. La clé est un HMAC calculé sur le poste de l'officine ;
+      ni nom, ni NIR, ni date de naissance ne sont présents.
+    columns:
+      - name: patient_key
+        description: Clé pseudonyme du patient.
+        tests: [unique, not_null]
+      - name: tranche_age
+        description: 0-17, 18-39, 40-59, 60-74, 75 ans et plus.
+      - name: regime
+        description: Régime général, ALD (affection de longue durée) ou C2S.
+        tests:
+          - accepted_values:
+              values: ['Régime général', 'ALD', 'C2S']
+      - name: est_anonyme
+        description: Client de passage, sans carte Vitale.
+
+  - name: dim_prescripteur
+    description: Prescripteurs (médecins), avec leur numéro RPPS et leur spécialité.
+    columns:
+      - name: prescripteur_id
+        tests: [unique, not_null]
+
+  - name: dim_vendeur
+    description: Membres de l'équipe qui ont encaissé ou réalisé une mission.
+    columns:
+      - name: vendeur_id
+        tests: [unique, not_null]
+      - name: est_pharmacien
+        description: A réalisé une mission de santé ou une délivrance sécurisée.
+
+  - name: dim_partenaire
+    description: Fournisseurs (grossistes, laboratoires) et payeurs (Assurance maladie, complémentaires).
+    columns:
+      - name: partenaire_id
+        tests: [unique, not_null]
+      - name: delai_paiement_attendu
+        description: Délai de paiement attendu en jours, paramétré dans Odoo.
+
+  - name: fct_passage
+    description: >
+      Un passage en caisse (ordonnance ou vente au comptoir). Référence pour le chiffre
+      d'affaires et la marge : les honoraires d'ordonnance y sont inclus.
+    columns:
+      - name: passage_id
+        tests: [unique, not_null]
+      - name: jour
+        description: Jour de délivrance, heure de Paris.
+        tests:
+          - not_null
+          - relationships: {to: ref('dim_date'), field: jour}
+      - name: heure
+        description: Heure de délivrance (8 à 19).
+      - name: type_vente
+        tests:
+          - accepted_values: {values: ['Ordonnance', 'Comptoir']}
+      - name: patient_key
+        tests:
+          - relationships: {to: ref('dim_patient'), field: patient_key}
+      - name: vendeur_id
+        tests:
+          - relationships: {to: ref('dim_vendeur'), field: vendeur_id}
+      - name: prescripteur_id
+        tests:
+          - relationships: {to: ref('dim_prescripteur'), field: prescripteur_id}
+      - name: marge
+        description: Marge brute HT, honoraires compris (CA HT − coût d'achat).
+
+  - name: fct_vente_ligne
+    description: >
+      Une ligne délivrée (article × passage). Les honoraires d'ordonnance n'y sont pas :
+      pour le total de l'officine, utiliser fct_passage.
+    columns:
+      - name: ligne_id
+        tests: [unique, not_null]
+      - name: produit_id
+        tests:
+          - not_null
+          - relationships: {to: ref('dim_produit'), field: produit_id}
+      - name: passage_id
+        tests:
+          - relationships: {to: ref('fct_passage'), field: passage_id}
+
+  - name: fct_stock_jour
+    description: Photo du stock de chaque article, chaque soir.
+    columns:
+      - name: produit_id
+        tests:
+          - relationships: {to: ref('dim_produit'), field: produit_id}
+      - name: valeur_surstock
+        description: Valeur au coût du stock au-delà de 30 jours de demande.
+      - name: valeur_dormante
+        description: Valeur des articles sans vente depuis 60 jours.
+
+  - name: fct_achat_ligne
+    description: Une ligne de commande fournisseur confirmée.
+    columns:
+      - name: ligne_achat_id
+        tests: [unique, not_null]
+      - name: est_depannage
+        description: Commande passée en urgence au second grossiste.
+
+  - name: fct_facture
+    description: Une facture client (bordereau) ou fournisseur, avec son délai réel de paiement.
+    columns:
+      - name: facture_id
+        tests: [unique, not_null]
+      - name: delai_paiement_jours
+        description: Jours entre la facture et son règlement complet.
+
+  - name: fct_tresorerie_jour
+    description: >
+      Encaissements et décaissements bancaires par jour ; le solde part de zéro au premier
+      jour de l'historique.
+    columns:
+      - name: jour
+        tests: [unique, not_null]
+
+  - name: fct_manquant
+    description: Une demande non servie, avec son issue (promis à rendre ou vente perdue).
+    columns:
+      - name: manquant_id
+        tests: [unique, not_null]
+      - name: issue
+        tests:
+          - accepted_values: {values: ['Promis', 'Vente perdue']}
+
+  - name: fct_mission
+    description: Une mission de santé réalisée (vaccination, dépistage, bilan, entretien).
+    columns:
+      - name: mission_id
+        tests: [unique, not_null]
+
+  - name: fct_ecart_inventaire
+    description: Un écart constaté lors d'un inventaire, valorisé au coût (démarque inconnue).
+    columns:
+      - name: ecart_id
+        tests: [unique, not_null]
+
+  - name: fct_prevision_tresorerie
+    description: Prévision de trésorerie à 60 jours calculée par Odoo le jour de l'export.
+    columns:
+      - name: jour
+        tests: [unique, not_null]

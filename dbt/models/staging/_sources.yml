@@ -1,0 +1,50 @@
+version: 2
+
+sources:
+  - name: pharma_raw
+    description: >
+      Tables brutes exportées d'Odoo chaque nuit par scripts/export_raw.py, pseudonymisées
+      (aucun nom, NIR ni date de naissance de patient). Heures en UTC.
+    tables:
+      - name: prescription
+        description: Passages en caisse (ordonnances et ventes au comptoir).
+        columns:
+          - name: id
+            tests: [unique, not_null]
+      - name: prescription_line
+        description: Lignes délivrées.
+        columns:
+          - name: id
+            tests: [unique, not_null]
+      - name: product
+        description: Articles.
+        columns:
+          - name: id
+            tests: [unique, not_null]
+      - name: patient
+        description: Patients pseudonymisés.
+        columns:
+          - name: patient_key
+            tests: [unique, not_null]
+      - name: prescriber
+        description: Prescripteurs.
+      - name: staff
+        description: Équipe.
+      - name: partner
+        description: Fournisseurs et payeurs.
+      - name: purchase_line
+        description: Lignes de commandes fournisseurs.
+      - name: invoice
+        description: Factures clients et fournisseurs.
+      - name: cash_line
+        description: Mouvements de banque et de caisse.
+      - name: stock_snapshot
+        description: Photo quotidienne du stock.
+      - name: missing_item
+        description: Manquants.
+      - name: health_service
+        description: Missions de santé.
+      - name: inventory_gap
+        description: Écarts d'inventaire.
+      - name: cash_forecast
+        description: Prévision de trésorerie calculée par Odoo.

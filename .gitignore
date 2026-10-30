@@ -4,3 +4,13 @@ __pycache__/
 bdpm/
 *.zip
 .env
+# Entrepôt de données
+export/
+.pseudo_key
+.venv-warehouse/
+dbt/target/
+dbt/logs/
+dbt/dbt_packages/
+dbt/profiles.yml
+dbt/.user.yml
+prive/

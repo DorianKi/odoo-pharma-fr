@@ -1,0 +1,28 @@
+# Projet dbt : transforme les tables brutes exportées d'Odoo (dataset pharma_raw)
+# en modèle en étoile (pharma_core) puis en tables prêtes pour Looker Studio (pharma_mart).
+name: pharma_dbt
+version: "1.0.0"
+config-version: 2
+profile: pharma
+
+model-paths: ["models"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+vars:
+  # Fuseau horaire de l'officine : les heures exportées d'Odoo sont en UTC.
+  fuseau: "Europe/Paris"
+
+models:
+  pharma_dbt:
+    staging:
+      +schema: staging
+      +materialized: view
+    core:
+      +schema: core
+      +materialized: table
+    mart:
+      +schema: mart
+      +materialized: table

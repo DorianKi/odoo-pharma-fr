@@ -1,0 +1,15 @@
+# Copiez ce fichier en ~/.dbt/profiles.yml (ou dans ce dossier sous le nom profiles.yml,
+# non versionné) et remplacez l'identifiant du projet Google Cloud.
+# Authentification : `gcloud auth application-default login` (aucun mot de passe ici).
+pharma:
+  target: prod
+  outputs:
+    prod:
+      type: bigquery
+      method: oauth
+      project: "{{ env_var('GCP_PROJECT') }}"
+      dataset: pharma          # préfixe : pharma_staging, pharma_core, pharma_mart
+      location: EU             # données hébergées dans l'Union européenne
+      threads: 4
+      job_execution_timeout_seconds: 300
+      priority: interactive

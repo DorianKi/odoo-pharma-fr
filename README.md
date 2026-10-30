@@ -20,6 +20,7 @@ Ce dépôt est la **brique « source de données »** d'un projet d'analyse de d
 | 4 | `pharma_fr_regulatory` | Registre des stupéfiants, ordonnancier, périmés (destruction) et retours patients | ✅ |
 | 5 | `pharma_fr_analytics` | Pilotage : photos quotidiennes du stock, rentabilité et ABC, trésorerie prévisionnelle, fidélité, génériques par prescripteur, équipe, affluence, démarque inconnue | ✅ |
 | 5 bis | `pharma_fr_services` | Missions de santé : vaccinations, TROD, bilans de médication, entretiens, facturées AMO / AMC | ✅ |
+| 6 | Entrepôt de données | Export pseudonymisé vers BigQuery, modèle en étoile et tests avec dbt, tableau de bord Looker Studio ([détails](docs/entrepot_bigquery.md)) | ✅ |
 
 ## Étape 1 : `pharma_fr_base`
 
@@ -229,6 +230,22 @@ autres), TROD angine, bilans partagés de médication, entretiens (anticoagulant
 enceintes, asthme). Chaque acte est rattaché au patient et au pharmacien, et facturé à
 l'AMO et à l'AMC selon le taux de prise en charge du type de mission. Les tarifs fournis
 sont indicatifs et **à vérifier** auprès de la convention pharmaceutique en vigueur.
+
+## Étape 6 : entrepôt de données (BigQuery, dbt, Looker Studio)
+
+Les données sortent d'Odoo chaque soir vers un entrepôt BigQuery appartenant à la
+pharmacie, sans aucune donnée identifiante de patient (clé pseudonyme HMAC calculée sur le
+poste). dbt y construit un **modèle en étoile** (6 dimensions, 11 faits dont les faits
+journaliers de stock et de trésorerie) puis 15 tables prêtes pour un tableau de bord
+**Looker Studio** en quatre pages : Journée, Stock, Argent, Patients.
+
+```bash
+./scripts/pipeline.sh pharmacie2      # export → BigQuery → dbt build (modèles + 75 tests)
+```
+
+- Mise en place et architecture : [docs/entrepot_bigquery.md](docs/entrepot_bigquery.md)
+- Tableau de bord, page par page : [docs/tableau_de_bord_looker.md](docs/tableau_de_bord_looker.md)
+- Projet dbt : [dbt/README.md](dbt/README.md)
 
 ## Données de démonstration
 

@@ -1,0 +1,26 @@
+-- Une ligne délivrée ; le jour, l'heure, le patient et le vendeur viennent du passage.
+select
+    l.id as ligne_id,
+    l.prescription_id as passage_id,
+    l.state = 'returned' as est_retourne,
+    l.product_id as produit_id,
+    l.prescribed_product_id as produit_prescrit_id,
+    l.quantity as quantite,
+    l.ald_related as en_rapport_ald,
+    l.non_substitutable as non_substituable,
+    l.substitution_refused as refus_substitution,
+    l.is_substitution as est_substitution,
+    l.is_generic as est_generique,
+    l.reimbursement_rate as taux_remboursement,
+    l.unit_price as prix_unitaire_ttc,
+    l.vat_rate as taux_tva,
+    l.tiers_payant,
+    l.amount_total as ca_ttc,
+    l.amount_untaxed as ca_ht,
+    l.amount_amo as part_amo,
+    l.amount_amc as part_amc,
+    l.amount_patient as part_patient,
+    l.amount_fees_untaxed as honoraires_ht,
+    l.amount_cost as cout_achat,
+    l.margin as marge
+from {{ source('pharma_raw', 'prescription_line') }} as l

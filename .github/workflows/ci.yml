@@ -22,6 +22,18 @@ jobs:
       - run: |
           python -m doctest -v pharma_fr_base/lib/bdpm.py
 
+  dbt-models:
+    # Les modèles dbt doivent rester du SQL BigQuery valide (sans compte Google Cloud).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: |
+          pip install sqlglot jinja2 pyyaml
+          python scripts/dbt_check_local.py --parse-only
+
   odoo-tests:
     runs-on: ubuntu-latest
     services:

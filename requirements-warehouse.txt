@@ -1,0 +1,9 @@
+# Outils de l'entrepôt de données (à installer sur le poste, hors Odoo) :
+#   python3 -m venv .venv-warehouse && . .venv-warehouse/bin/activate
+#   pip install -r requirements-warehouse.txt
+psycopg2-binary>=2.9
+dbt-bigquery>=1.8,<2.0
+# Vérification hors ligne du projet dbt (scripts/dbt_check_local.py), facultatif :
+sqlglot>=25
+pyyaml>=6
+jinja2>=3
