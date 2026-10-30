@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!--
+        Actes du pharmacien (tarifs métropole TTC, non soumis à TVA). Valeurs indicatives
+        issues de la convention pharmaceutique et de ses avenants : à vérifier et ajuster
+        dans Pharmacie > Configuration > Types de missions.
+    -->
+    <record id="product_service_vaccination" model="product.product">
+        <field name="name">Acte de vaccination (injection)</field>
+        <field name="type">service</field>
+        <field name="purchase_ok" eval="False"/>
+        <field name="taxes_id" eval="[(5, 0, 0)]"/>
+        <field name="default_code">ACTE-VAC</field>
+    </record>
+    <record id="product_service_trod" model="product.product">
+        <field name="name">Test rapide d'orientation diagnostique (TROD)</field>
+        <field name="type">service</field>
+        <field name="purchase_ok" eval="False"/>
+        <field name="taxes_id" eval="[(5, 0, 0)]"/>
+        <field name="default_code">ACTE-TROD</field>
+    </record>
+    <record id="product_service_interview" model="product.product">
+        <field name="name">Entretien pharmaceutique / bilan de médication</field>
+        <field name="type">service</field>
+        <field name="purchase_ok" eval="False"/>
+        <field name="taxes_id" eval="[(5, 0, 0)]"/>
+        <field name="default_code">ACTE-ENT</field>
+    </record>
+
+    <record id="type_flu_vaccination" model="pharma.health.service.type">
+        <field name="name">Vaccination antigrippale</field>
+        <field name="code">VGP</field>
+        <field name="category">vaccination</field>
+        <field name="amount">7.50</field>
+        <field name="amo_rate">100</field>
+        <field name="duration_minutes">10</field>
+        <field name="product_id" ref="product_service_vaccination"/>
+    </record>
+    <record id="type_covid_vaccination" model="pharma.health.service.type">
+        <field name="name">Vaccination Covid-19</field>
+        <field name="code">INJ</field>
+        <field name="category">vaccination</field>
+        <field name="amount">7.50</field>
+        <field name="amo_rate">100</field>
+        <field name="duration_minutes">10</field>
+        <field name="product_id" ref="product_service_vaccination"/>
+    </record>
+    <record id="type_other_vaccination" model="pharma.health.service.type">
+        <field name="name">Autre vaccination (rappel, prescription préalable)</field>
+        <field name="code">RVA</field>
+        <field name="category">vaccination</field>
+        <field name="amount">7.50</field>
+        <field name="amo_rate">70</field>
+        <field name="duration_minutes">10</field>
+        <field name="product_id" ref="product_service_vaccination"/>
+    </record>
+    <record id="type_trod_angine" model="pharma.health.service.type">
+        <field name="name">TROD angine</field>
+        <field name="code">TRD</field>
+        <field name="category">test</field>
+        <field name="amount">10.00</field>
+        <field name="amo_rate">70</field>
+        <field name="duration_minutes">10</field>
+        <field name="product_id" ref="product_service_trod"/>
+    </record>
+    <record id="type_bpm" model="pharma.health.service.type">
+        <field name="name">Bilan partagé de médication (1re année)</field>
+        <field name="code">BMI</field>
+        <field name="category">interview</field>
+        <field name="amount">60.00</field>
+        <field name="amo_rate">100</field>
+        <field name="duration_minutes">45</field>
+        <field name="product_id" ref="product_service_interview"/>
+    </record>
+    <record id="type_aod_interview" model="pharma.health.service.type">
+        <field name="name">Entretien anticoagulants (AVK / AOD)</field>
+        <field name="code">ASI</field>
+        <field name="category">interview</field>
+        <field name="amount">15.00</field>
+        <field name="amo_rate">100</field>
+        <field name="duration_minutes">20</field>
+        <field name="product_id" ref="product_service_interview"/>
+    </record>
+    <record id="type_pregnancy_interview" model="pharma.health.service.type">
+        <field name="name">Entretien femme enceinte</field>
+        <field name="code">EFE</field>
+        <field name="category">interview</field>
+        <field name="amount">5.00</field>
+        <field name="amo_rate">100</field>
+        <field name="duration_minutes">15</field>
+        <field name="product_id" ref="product_service_interview"/>
+    </record>
+</odoo>

@@ -1,0 +1,289 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Trésorerie prévisionnelle -->
+    <record id="view_pharma_cash_forecast_list" model="ir.ui.view">
+        <field name="name">pharma.cash.forecast.list</field>
+        <field name="model">pharma.cash.forecast</field>
+        <field name="arch" type="xml">
+            <list string="Trésorerie prévisionnelle" create="0" edit="0"
+                  decoration-danger="balance &lt; 0">
+                <header>
+                    <button name="action_refresh" type="object" string="Recalculer" display="always"/>
+                </header>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="date"/>
+                <field name="inflow_amo" sum="AMO"/>
+                <field name="inflow_amc" sum="AMC"/>
+                <field name="inflow_other" sum="Autres"/>
+                <field name="outflow_suppliers" sum="Fournisseurs"/>
+                <field name="net" sum="Net"/>
+                <field name="balance"/>
+                <field name="overdue_in" optional="hide"/>
+                <field name="overdue_out" optional="hide"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_pharma_cash_forecast_graph" model="ir.ui.view">
+        <field name="name">pharma.cash.forecast.graph</field>
+        <field name="model">pharma.cash.forecast</field>
+        <field name="arch" type="xml">
+            <graph string="Trésorerie prévue" type="line">
+                <field name="date" interval="day"/>
+                <field name="balance" type="measure"/>
+            </graph>
+        </field>
+    </record>
+    <record id="action_pharma_cash_forecast" model="ir.actions.act_window">
+        <field name="name">Trésorerie prévisionnelle</field>
+        <field name="res_model">pharma.cash.forecast</field>
+        <field name="view_mode">graph,list</field>
+        <field name="help" type="html">
+            <p>Encaissements attendus (Sécurité sociale, mutuelles, patients) et règlements
+               fournisseurs à échéance, sur 60 jours. Recalculée chaque nuit.</p>
+        </field>
+    </record>
+
+    <!-- Écarts d'inventaire -->
+    <record id="view_pharma_inventory_gap_list" model="ir.ui.view">
+        <field name="name">pharma.inventory.gap.list</field>
+        <field name="model">pharma.inventory.gap</field>
+        <field name="arch" type="xml">
+            <list string="Écarts d'inventaire" create="0" decoration-danger="gap_qty &lt; 0">
+                <field name="currency_id" column_invisible="1"/>
+                <field name="date"/>
+                <field name="product_id"/>
+                <field name="pharma_category" optional="show"/>
+                <field name="lot_id" optional="hide"/>
+                <field name="theoretical_qty"/>
+                <field name="counted_qty"/>
+                <field name="gap_qty" sum="Unités"/>
+                <field name="gap_value" sum="Valeur"/>
+                <field name="reason" optional="show"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_pharma_inventory_gap_pivot" model="ir.ui.view">
+        <field name="name">pharma.inventory.gap.pivot</field>
+        <field name="model">pharma.inventory.gap</field>
+        <field name="arch" type="xml">
+            <pivot string="Démarque">
+                <field name="pharma_category" type="row"/>
+                <field name="date" interval="month" type="col"/>
+                <field name="gap_value" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+    <record id="action_pharma_inventory_gap" model="ir.actions.act_window">
+        <field name="name">Écarts d'inventaire (démarque)</field>
+        <field name="res_model">pharma.inventory.gap</field>
+        <field name="view_mode">pivot,list</field>
+        <field name="help" type="html">
+            <p>Chaque inventaire (tournant ou annuel) enregistre automatiquement les écarts entre
+               stock théorique et stock compté : démarque inconnue (vols, casse, erreurs).</p>
+        </field>
+    </record>
+
+    <!-- Fidélité -->
+    <record id="view_pharma_patient_loyalty_list" model="ir.ui.view">
+        <field name="name">pharma.patient.loyalty.list</field>
+        <field name="model">pharma.patient.loyalty</field>
+        <field name="arch" type="xml">
+            <list string="Fidélité" decoration-danger="status == 'lost'" decoration-warning="status == 'at_risk'"
+                  decoration-success="status == 'new'">
+                <field name="currency_id" column_invisible="1"/>
+                <field name="patient_id"/>
+                <field name="status"/>
+                <field name="is_chronic"/>
+                <field name="first_visit"/>
+                <field name="last_visit"/>
+                <field name="days_since_last"/>
+                <field name="visit_count"/>
+                <field name="total_spent" sum="Total"/>
+                <field name="avg_basket"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_pharma_patient_loyalty_search" model="ir.ui.view">
+        <field name="name">pharma.patient.loyalty.search</field>
+        <field name="model">pharma.patient.loyalty</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="patient_id"/>
+                <filter name="chronic" string="Chroniques" domain="[('is_chronic', '=', True)]"/>
+                <filter name="at_risk" string="À risque ou perdus" domain="[('status', 'in', ('at_risk', 'lost'))]"/>
+                <filter name="group_status" string="Statut" context="{'group_by': 'status'}"/>
+            </search>
+        </field>
+    </record>
+    <record id="action_pharma_patient_loyalty" model="ir.actions.act_window">
+        <field name="name">Fidélité des patients</field>
+        <field name="res_model">pharma.patient.loyalty</field>
+        <field name="view_mode">list,pivot</field>
+        <field name="context">{'search_default_group_status': 1}</field>
+    </record>
+
+    <!-- Rentabilité -->
+    <record id="view_pharma_product_performance_pivot" model="ir.ui.view">
+        <field name="name">pharma.product.performance.pivot</field>
+        <field name="model">pharma.product.performance</field>
+        <field name="arch" type="xml">
+            <pivot string="Rentabilité">
+                <field name="pharma_category" type="row"/>
+                <field name="month" interval="month" type="col"/>
+                <field name="revenue" type="measure"/>
+                <field name="margin" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+    <record id="view_pharma_product_performance_list" model="ir.ui.view">
+        <field name="name">pharma.product.performance.list</field>
+        <field name="model">pharma.product.performance</field>
+        <field name="arch" type="xml">
+            <list string="Rentabilité des articles">
+                <field name="currency_id" column_invisible="1"/>
+                <field name="month"/>
+                <field name="product_id"/>
+                <field name="pharma_category" optional="show"/>
+                <field name="laboratory_id" optional="hide"/>
+                <field name="abc_class"/>
+                <field name="quantity" sum="Unités"/>
+                <field name="revenue" sum="CA HT"/>
+                <field name="margin" sum="Marge"/>
+                <field name="margin_rate"/>
+                <field name="avg_stock_value" optional="show"/>
+                <field name="gmroi" optional="show"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_pharma_product_performance_search" model="ir.ui.view">
+        <field name="name">pharma.product.performance.search</field>
+        <field name="model">pharma.product.performance</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="product_id"/>
+                <field name="laboratory_id"/>
+                <filter name="class_a" string="Classe A" domain="[('abc_class', '=', 'A')]"/>
+                <filter name="class_c" string="Classe C" domain="[('abc_class', '=', 'C')]"/>
+                <filter name="group_category" string="Rayon" context="{'group_by': 'pharma_category'}"/>
+                <filter name="group_laboratory" string="Laboratoire" context="{'group_by': 'laboratory_id'}"/>
+                <filter name="group_abc" string="Classe ABC" context="{'group_by': 'abc_class'}"/>
+            </search>
+        </field>
+    </record>
+    <record id="action_pharma_product_performance" model="ir.actions.act_window">
+        <field name="name">Rentabilité des articles</field>
+        <field name="res_model">pharma.product.performance</field>
+        <field name="view_mode">pivot,list</field>
+    </record>
+
+    <!-- Génériques par prescripteur -->
+    <record id="view_pharma_prescriber_generic_report_list" model="ir.ui.view">
+        <field name="name">pharma.prescriber.generic.report.list</field>
+        <field name="model">pharma.prescriber.generic.report</field>
+        <field name="arch" type="xml">
+            <list string="Génériques par prescripteur" decoration-danger="generic_rate &lt; 80">
+                <field name="month"/>
+                <field name="prescriber_id"/>
+                <field name="substitutable_lines" sum="Substituables"/>
+                <field name="generic_lines" sum="Génériques"/>
+                <field name="non_substitutable_lines" sum="NS"/>
+                <field name="refused_lines" sum="Refus"/>
+                <field name="generic_rate"/>
+            </list>
+        </field>
+    </record>
+    <record id="action_pharma_prescriber_generic_report" model="ir.actions.act_window">
+        <field name="name">Génériques par prescripteur</field>
+        <field name="res_model">pharma.prescriber.generic.report</field>
+        <field name="view_mode">list,pivot</field>
+    </record>
+
+    <!-- Équipe -->
+    <record id="view_pharma_seller_report_pivot" model="ir.ui.view">
+        <field name="name">pharma.seller.report.pivot</field>
+        <field name="model">pharma.seller.report</field>
+        <field name="arch" type="xml">
+            <pivot string="Équipe">
+                <field name="seller_id" type="row"/>
+                <field name="day" interval="month" type="col"/>
+                <field name="visits" type="measure"/>
+                <field name="revenue" type="measure"/>
+                <field name="margin" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+    <record id="view_pharma_seller_report_list" model="ir.ui.view">
+        <field name="name">pharma.seller.report.list</field>
+        <field name="model">pharma.seller.report</field>
+        <field name="arch" type="xml">
+            <list string="Performance de l'équipe">
+                <field name="currency_id" column_invisible="1"/>
+                <field name="day"/>
+                <field name="seller_id"/>
+                <field name="visits" sum="Passages"/>
+                <field name="rx_visits" sum="Ordonnances"/>
+                <field name="counter_visits" sum="Comptoir"/>
+                <field name="revenue" sum="CA"/>
+                <field name="avg_basket"/>
+                <field name="margin" sum="Marge"/>
+            </list>
+        </field>
+    </record>
+    <record id="action_pharma_seller_report" model="ir.actions.act_window">
+        <field name="name">Performance de l'équipe</field>
+        <field name="res_model">pharma.seller.report</field>
+        <field name="view_mode">pivot,list</field>
+    </record>
+
+    <!-- Affluence -->
+    <record id="view_pharma_prescription_pivot_affluence" model="ir.ui.view">
+        <field name="name">pharma.prescription.pivot.affluence</field>
+        <field name="model">pharma.prescription</field>
+        <field name="priority">50</field>
+        <field name="arch" type="xml">
+            <pivot string="Affluence">
+                <field name="dispensing_hour" type="row"/>
+                <field name="dispensing_weekday" type="col"/>
+            </pivot>
+        </field>
+    </record>
+    <record id="view_pharma_prescription_graph_affluence" model="ir.ui.view">
+        <field name="name">pharma.prescription.graph.affluence</field>
+        <field name="model">pharma.prescription</field>
+        <field name="priority">50</field>
+        <field name="arch" type="xml">
+            <graph string="Affluence par heure" type="bar">
+                <field name="dispensing_hour"/>
+            </graph>
+        </field>
+    </record>
+    <record id="action_pharma_affluence" model="ir.actions.act_window">
+        <field name="name">Affluence</field>
+        <field name="res_model">pharma.prescription</field>
+        <field name="view_mode">graph,pivot</field>
+        <field name="domain">[('state', '=', 'done')]</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'graph', 'view_id': ref('view_pharma_prescription_graph_affluence')}),
+            (0, 0, {'view_mode': 'pivot', 'view_id': ref('view_pharma_prescription_pivot_affluence')})]"/>
+    </record>
+
+    <!-- Menus -->
+    <menuitem id="menu_pharma_analytics" name="Pilotage" parent="pharma_fr_base.menu_pharma_root"
+              sequence="45" groups="pharma_fr_base.group_pharma_manager"/>
+    <menuitem id="menu_pharma_stock_snapshot" name="Suivi quotidien du stock" parent="menu_pharma_analytics"
+              action="action_pharma_stock_snapshot" sequence="10"/>
+    <menuitem id="menu_pharma_product_performance" name="Rentabilité des articles" parent="menu_pharma_analytics"
+              action="action_pharma_product_performance" sequence="20"/>
+    <menuitem id="menu_pharma_cash_forecast" name="Trésorerie prévisionnelle" parent="menu_pharma_analytics"
+              action="action_pharma_cash_forecast" sequence="30"/>
+    <menuitem id="menu_pharma_patient_loyalty" name="Fidélité des patients" parent="menu_pharma_analytics"
+              action="action_pharma_patient_loyalty" sequence="40"/>
+    <menuitem id="menu_pharma_prescriber_generic" name="Génériques par prescripteur" parent="menu_pharma_analytics"
+              action="action_pharma_prescriber_generic_report" sequence="50"/>
+    <menuitem id="menu_pharma_seller_report" name="Performance de l'équipe" parent="menu_pharma_analytics"
+              action="action_pharma_seller_report" sequence="60"/>
+    <menuitem id="menu_pharma_affluence" name="Affluence" parent="menu_pharma_analytics"
+              action="action_pharma_affluence" sequence="70"/>
+    <menuitem id="menu_pharma_inventory_gap" name="Écarts d'inventaire" parent="menu_pharma_analytics"
+              action="action_pharma_inventory_gap" sequence="80"/>
+</odoo>

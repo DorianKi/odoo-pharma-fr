@@ -197,3 +197,27 @@ class TestDispensation(PharmaDispensationCase):
         refunds = rx2._pharma_create_refunds("test")
         self.assertAlmostEqual(sum(refunds.mapped("amount_total")), rx2.amount_total, places=2)
         self.assertEqual(set(refunds.mapped("move_type")), {"out_refund"})
+
+    def test_seller_and_slot(self):
+        rx = self._prescription(lines=[(self.princeps, 1)],
+                                dispensing_date="2026-01-15 10:30:00")  # UTC, heure d'hiver
+        self.assertEqual(rx.seller_id, self.env.user)
+        self.assertEqual(rx.dispensing_hour, 11)
+        self.assertEqual(rx.dispensing_weekday, "3")  # jeudi
+        self.assertFalse(rx.is_counter_sale)
+        summer = self._prescription(lines=[(self.princeps, 1)], prescriber_id=False,
+                                    dispensing_date="2026-07-15 10:30:00")
+        self.assertEqual(summer.dispensing_hour, 12)
+        self.assertTrue(summer.is_counter_sale)
+
+    def test_promise_lifecycle(self):
+        Missing = self.env["pharma.missing.item"]
+        promise = Missing.create({"product_id": self.amox.id, "outcome": "deferred",
+                                  "patient_id": self.patient.id})
+        lost = Missing.create({"product_id": self.amox.id, "outcome": "lost"})
+        self.assertEqual((promise.state, lost.state), ("open", "closed"))
+        rx = self._prescription(lines=[(self.amox, 1)])
+        promise.action_mark_delivered(rx)
+        self.assertEqual(promise.state, "delivered")
+        self.assertEqual(promise.delivered_prescription_id, rx)
+        self.assertGreaterEqual(promise.delay_days, 0)

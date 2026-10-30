@@ -18,7 +18,8 @@ Ce dépôt est la **brique « source de données »** d'un projet d'analyse de d
 | 2 | `pharma_fr_purchase` | Grossistes-répartiteurs et commandes directes aux laboratoires, conditions commerciales, plafonds légaux de remise, réassort | ✅ |
 | 3 | `pharma_fr_dispensation` | Ordonnances, patients, prescripteurs, tiers payant AMO / AMC, honoraires, substitution, facturation par payeur | ✅ |
 | 4 | `pharma_fr_regulatory` | Registre des stupéfiants, ordonnancier, périmés (destruction) et retours patients | ✅ |
-| 5 | `pharma_fr_analytics` | Pilotage : photos quotidiennes du stock (valeur, couverture, péremptions, dormants, ruptures) | ✅ |
+| 5 | `pharma_fr_analytics` | Pilotage : photos quotidiennes du stock, rentabilité et ABC, trésorerie prévisionnelle, fidélité, génériques par prescripteur, équipe, affluence, démarque inconnue | ✅ |
+| 5 bis | `pharma_fr_services` | Missions de santé : vaccinations, TROD, bilans de médication, entretiens, facturées AMO / AMC | ✅ |
 
 ## Étape 1 : `pharma_fr_base`
 
@@ -197,8 +198,37 @@ article :
 
 Odoo ne garde que le stock du moment : cette table fournit l'historique nécessaire au
 suivi quotidien (évolution de la valeur du stock, rotation, surstock). Elle se consulte
-dans *Pharmacie → Stock → Suivi quotidien du stock*, en vues graphique, tableau croisé
+dans *Pharmacie → Pilotage → Suivi quotidien du stock*, en vues graphique, tableau croisé
 ou liste.
+
+**Menu Pharmacie → Pilotage** (vues SQL alimentées par les données de l'ERP) :
+
+| Analyse | Question à laquelle elle répond |
+|---|---|
+| Suivi quotidien du stock | Combien vaut mon stock, combien de jours de couverture, que va périmer ? |
+| Rentabilité | Quels rayons, laboratoires et articles font ma marge ? Classement **ABC** par marge, **GMROI** (marge / stock moyen) |
+| Trésorerie | Quel solde dans 60 jours ? Encaissements attendus (délai réel de chaque payeur) et échéances fournisseurs |
+| Fidélité | Quels patients sont nouveaux, actifs, **à risque** ou **perdus** (plus de passage depuis 1,5 fois leur rythme) ? |
+| Génériques par prescripteur | Quel médecin freine la substitution (mentions « non substituable ») ? |
+| Équipe | Chiffre, panier moyen, part du conseil et des ventes additionnelles par **vendeur** |
+| Affluence | Passages par heure et par jour de la semaine, pour caler les plannings |
+| Écarts d'inventaire | **Démarque inconnue** relevée par les inventaires tournants, valorisée au coût |
+
+Compléments dans les modules métier :
+- chaque vente porte son **vendeur**, son heure et son jour (`seller_id`, `dispensing_hour`,
+  `dispensing_weekday`) ;
+- les manquants « à rendre » ont un cycle de vie : ouvert → **rendu** (avec le délai) ou
+  annulé ;
+- chaque payeur a un **délai de paiement** paramétrable, utilisé par la trésorerie ;
+- toute validation d'inventaire enregistre l'écart (quantité et valeur) et son motif.
+
+## Étape 5 bis : `pharma_fr_services`
+
+Les **missions de santé** de l'officine, hors délivrance : vaccinations (grippe, Covid,
+autres), TROD angine, bilans partagés de médication, entretiens (anticoagulants, femmes
+enceintes, asthme). Chaque acte est rattaché au patient et au pharmacien, et facturé à
+l'AMO et à l'AMC selon le taux de prise en charge du type de mission. Les tarifs fournis
+sont indicatifs et **à vérifier** auprès de la convention pharmaceutique en vigueur.
 
 ## Données de démonstration
 
@@ -225,7 +255,15 @@ Durée indicative : environ 45 minutes pour 3 mois à l'échelle 2.
   conseils, parapharmacie), les grossistes et le génériqueur, les conditions
   commerciales, 800 patients fictifs (NIR valides), des prescripteurs et le stock
   d'ouverture.
-- Chaque jour d'ouverture, il simule :
+- Une **équipe** de 5 personnes (titulaire, adjoint, trois préparateurs) aux profils de
+  vente différents : certaines proposent davantage de conseil associé aux ordonnances.
+- Chaque jour d'ouverture, il simule une journée **heure par heure** (8 h 30 – 19 h 30,
+  pics de fin de matinée et de fin de journée) :
+  - à l'ouverture : périmés, réceptions, **inventaire tournant le lundi**, commande ;
+  - vers midi : livraison du grossiste, dépannages, puis délivrance des **produits
+    promis** (abandonnés au-delà de 5 jours) ;
+  - les **missions de santé** : TROD plus fréquents à l'automne, campagne de vaccination
+    antigrippale à partir de la mi-octobre, entretiens et bilans ;
   - les réceptions et la commande de réassort ;
   - les renouvellements des patients chroniques, les ordonnances ponctuelles et les
     ventes au comptoir ;
@@ -248,7 +286,10 @@ Durée indicative : environ 45 minutes pour 3 mois à l'échelle 2.
   - ruptures nationales mal livrées ;
   - dépannages chez le second grossiste, plus chers ;
   - substitution générique freinée par un prescripteur ;
-  - commandes sous le franco.
+  - commandes sous le franco ;
+  - **démarque inconnue** en parapharmacie (libre accès) ;
+  - **patients chroniques qui partent** chez un confrère en cours de période ;
+  - écarts de performance entre vendeurs.
 
 Toutes les personnes et organismes privés sont fictifs. Les coûts d'achat sont estimés.
 
@@ -263,7 +304,7 @@ docker compose up -d                  # Odoo 19 + PostgreSQL 16 → http://local
 ```
 
 1. Créez une base de données en choisissant le pays **France** (plan comptable et TVA françaises).
-2. **Applications** (retirez le filtre « Applications ») → installez **« Pharmacie FR - Pilotage »** : il installe aussi les quatre autres modules.
+2. **Applications** (retirez le filtre « Applications ») → installez **« Pharmacie FR - Pilotage »** : il installe aussi tous les autres modules.
 3. **Pharmacie → Configuration → Import BDPM** : déposez `bdpm/bdpm.zip` et choisissez
    les articles à créer (par exemple, toutes les présentations commercialisées et remboursables).
 
@@ -277,7 +318,7 @@ alors relue chaque mois depuis ce répertoire, alimenté par `scripts/download_b
 
 ```bash
 odoo -d test -i pharma_fr_analytics --stop-after-init \
-     --test-tags=/pharma_fr_base,/pharma_fr_purchase,/pharma_fr_dispensation,/pharma_fr_regulatory,/pharma_fr_analytics
+     --test-tags=/pharma_fr_base,/pharma_fr_purchase,/pharma_fr_dispensation,/pharma_fr_regulatory,/pharma_fr_services,/pharma_fr_analytics
 python -m doctest -v pharma_fr_base/lib/bdpm.py   # parseur seul, sans Odoo
 ```
 

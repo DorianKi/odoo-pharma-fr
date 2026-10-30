@@ -1,3 +1,4 @@
+import pytz
 from dateutil.relativedelta import relativedelta
 
 from odoo import Command, api, fields, models
@@ -47,6 +48,23 @@ class PharmaPrescription(models.Model):
     )
     dispensing_date = fields.Datetime(
         "Date de délivrance", required=True, default=fields.Datetime.now, index=True,
+    )
+    seller_id = fields.Many2one(
+        "res.users", string="Vendeur", default=lambda self: self.env.user, index=True,
+        tracking=True, help="Membre de l'équipe ayant réalisé la délivrance.",
+    )
+    dispensing_hour = fields.Integer(
+        "Heure de passage", compute="_compute_dispensing_slot", store=True,
+        help="Heure locale (Europe/Paris) de la délivrance.",
+    )
+    dispensing_weekday = fields.Selection(
+        [("0", "Lundi"), ("1", "Mardi"), ("2", "Mercredi"), ("3", "Jeudi"),
+         ("4", "Vendredi"), ("5", "Samedi"), ("6", "Dimanche")],
+        string="Jour de la semaine", compute="_compute_dispensing_slot", store=True,
+    )
+    is_counter_sale = fields.Boolean(
+        "Vente comptoir", compute="_compute_is_counter_sale", store=True,
+        help="Vente sans ordonnance (pas de prescripteur).",
     )
     prescription_type = fields.Selection(
         [
@@ -121,6 +139,23 @@ class PharmaPrescription(models.Model):
             )
             rx.substitutable_count = len(substitutable)
             rx.generic_count = len(substitutable.filtered("is_generic"))
+
+    @api.depends("dispensing_date")
+    def _compute_dispensing_slot(self):
+        paris = pytz.timezone("Europe/Paris")
+        for rx in self:
+            if not rx.dispensing_date:
+                rx.dispensing_hour = 0
+                rx.dispensing_weekday = False
+                continue
+            local = pytz.utc.localize(rx.dispensing_date).astimezone(paris)
+            rx.dispensing_hour = local.hour
+            rx.dispensing_weekday = str(local.weekday())
+
+    @api.depends("prescriber_id")
+    def _compute_is_counter_sale(self):
+        for rx in self:
+            rx.is_counter_sale = not rx.prescriber_id
 
     def _compute_invoice_count(self):
         for rx in self:

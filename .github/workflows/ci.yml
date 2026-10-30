@@ -43,4 +43,4 @@ jobs:
         run: |
           odoo -d ci --db_host=postgres --db_user=odoo --db_password=odoo \
             --addons-path=$GITHUB_WORKSPACE,/usr/lib/python3/dist-packages/odoo/addons \
-            -i pharma_fr_analytics --test-tags=/pharma_fr_base,/pharma_fr_purchase,/pharma_fr_dispensation,/pharma_fr_regulatory,/pharma_fr_analytics --stop-after-init --no-http
+            -i pharma_fr_analytics --test-tags=/pharma_fr_base,/pharma_fr_purchase,/pharma_fr_dispensation,/pharma_fr_regulatory,/pharma_fr_services,/pharma_fr_analytics --stop-after-init --no-http

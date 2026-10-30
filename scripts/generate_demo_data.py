@@ -44,6 +44,7 @@ import unicodedata
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 
+import pytz
 from freezegun import freeze_time
 
 from odoo import Command, fields
@@ -274,7 +275,7 @@ class Simulation:
     def check(self):
         Module = self.env["ir.module.module"]
         for name in ("pharma_fr_purchase", "pharma_fr_dispensation", "pharma_fr_regulatory",
-                     "pharma_fr_analytics"):
+                     "pharma_fr_services", "pharma_fr_analytics"):
             if Module.search_count([("name", "=", name), ("state", "=", "installed")]) == 0:
                 raise UserError(f"Le module {name} doit être installé (Applications).")
         if not self.env["pharma.presentation"].search_count([]):
@@ -421,11 +422,12 @@ class Simulation:
         self.cpam = Partner.create({
             "name": "CPAM de Paris", "is_company": True, "pharma_partner_type": "insurer",
             "pharma_insurer_type": "amo", "pharma_insurer_code": "751", "city": "Paris",
+            "pharma_payment_delay_days": 5,
         })
         self.mutuelles = Partner.create([{
             "name": name, "is_company": True, "pharma_partner_type": "insurer",
-            "pharma_insurer_type": "amc",
-        } for name in MUTUELLES])
+            "pharma_insurer_type": "amc", "pharma_payment_delay_days": 12 + 4 * i,
+        } for i, name in enumerate(MUTUELLES)])
         self.walk_in = Partner.create({
             "name": "Client de passage", "pharma_partner_type": "patient",
             "pharma_tiers_payant": False, "pharma_amc_coverage": "none",
@@ -474,6 +476,36 @@ class Simulation:
             })
         self.patients = Partner.create(patients)
         self.log("Partenaires : %s patients, %s prescripteurs", len(self.patients), len(self.prescribers))
+
+    def create_team(self):
+        """A. L'équipe : titulaire, adjoint et préparateurs, avec des profils de vente
+        différents (taux de conseil associé aux ordonnances)."""
+        Users = self.env["res.users"].with_context(no_reset_password=True)
+        group = self.env.ref("pharma_fr_base.group_pharma_user")
+        team = [
+            ("Claire Morel (titulaire)", "titulaire", True, 0.30, 1.0),
+            ("Youssef Benali (adjoint)", "adjoint", True, 0.25, 1.1),
+            ("Sophie Lambert (préparatrice)", "preparatrice1", False, 0.28, 1.3),
+            ("Kevin Nguyen (préparateur)", "preparateur2", False, 0.08, 1.2),
+            ("Inès Diallo (préparatrice)", "preparatrice3", False, 0.18, 0.9),
+        ]
+        self.sellers, self.seller_weights, self.conseil_rate = [], [], {}
+        self.pharmacists = []
+        for name, login, pharmacist, conseil, weight in team:
+            user = Users.search([("login", "=", f"demo.{login}")], limit=1) or Users.create({
+                "name": name, "login": f"demo.{login}", "group_ids": [Command.link(group.id)],
+            })
+            self.sellers.append(user)
+            self.seller_weights.append(weight)
+            self.conseil_rate[user.id] = conseil
+            if pharmacist:
+                self.pharmacists.append(user)
+        self.log("Équipe : %s personnes", len(self.sellers))
+
+    def pick_seller(self, pharmacist=False):
+        if pharmacist:
+            return self.rng.choice(self.pharmacists)
+        return self.rng.choices(self.sellers, self.seller_weights)[0]
 
     def setup_purchasing(self):
         """Tarifs fournisseurs, conditions commerciales et demande par article."""
@@ -634,7 +666,7 @@ class Simulation:
                     "expiration_date": self.lot_expiry(short=short),
                 }).id
             quants |= Quant.create(vals)
-        quants.action_apply_inventory()
+        quants.with_context(pharma_skip_gap=True).action_apply_inventory()
         self.log("Stock d'ouverture : %s articles", len(products))
 
     # ------------------------------------------------------------------
@@ -696,8 +728,16 @@ class Simulation:
             with self.env.cr.savepoint():
                 order.action_create_invoice()
                 bills = order.invoice_ids.filtered(lambda m: m.state == "draft")
-                bills.write({"invoice_date": fields.Date.today(),
-                             "ref": f"Facture {order.partner_id.name} {order.name}"})
+                today = fields.Date.today()
+                partner = order.partner_id
+                if partner.pharma_partner_type == "wholesaler":   # le 10 du mois suivant
+                    due = (today.replace(day=1) + timedelta(days=32)).replace(day=10)
+                elif partner == self.para_supplier:
+                    due = today + timedelta(days=30)
+                else:
+                    due = today + timedelta(days=60)
+                bills.write({"invoice_date": today, "invoice_date_due": due,
+                             "ref": f"Facture {partner.name} {order.name}"})
                 bills.action_post()
                 self.stats["factures_fournisseurs"] += len(bills)
         except UserError as exc:
@@ -789,16 +829,17 @@ class Simulation:
             return self.env["product.product"].browse(choice), flags
         return product, {}
 
-    def missing(self, product, qty, patient, reason, outcome):
+    def missing(self, product, qty, patient, reason, outcome, prescriber=None):
         tmpl = product.product_tmpl_id
         self.env["pharma.missing.item"].create({
             "product_id": product.id, "quantity": qty, "reason": reason, "outcome": outcome,
             "patient_id": patient.id,
+            "prescriber_id": prescriber.id if prescriber else False,
             "unit_price": tmpl.pharma_public_price or tmpl.list_price,
         })
         self.stats["manquants"] += 1
 
-    def serve_lines(self, wanted, patient):
+    def serve_lines(self, wanted, patient, prescriber=None):
         """Vérifie le stock ; enregistre les manquants et déclenche les dépannages."""
         lines = []
         for product, qty, extra in wanted:
@@ -813,15 +854,29 @@ class Simulation:
             status = product.pharma_availability_status
             reason = "national_shortage" if status in ("shortage", "tension") else "stock"
             outcome = "lost" if reason == "national_shortage" or self.rng.random() < 0.35 else "deferred"
-            self.missing(product, qty, patient, reason, outcome)
+            self.missing(product, qty, patient, reason, outcome, prescriber)
             if reason == "stock" and product.id not in self.emergency_today:
                 self.emergency_today.add(product.id)
                 self.emergency[product.id] = math.ceil(self.demand[product.id] * 4) + qty
         return lines
 
-    def dispense(self, patient, prescriber, lines, rx_type="standard", renewal=0, rx_date=None):
+    def visit(self, patient, prescriber, wanted, rx_type="standard", renewal=0, rx_date=None,
+              seller=None):
+        """Passage au comptoir : vérification du stock, vente additionnelle de conseil
+        selon le vendeur, puis délivrance."""
+        seller = seller or self.pick_seller(pharmacist=rx_type == "secure")
+        if prescriber and self.rng.random() < self.conseil_rate[seller.id]:
+            catalog = self.para_products + self.otc_products
+            if catalog:
+                product = self.rng.choices([p for p, _w in catalog], [w for _p, w in catalog])[0]
+                wanted = list(wanted) + [(product, 1, {})]
+        lines = self.serve_lines(wanted, patient, prescriber)
+        return self.dispense(patient, prescriber, lines, rx_type, renewal, rx_date, seller)
+
+    def dispense(self, patient, prescriber, lines, rx_type="standard", renewal=0, rx_date=None,
+                 seller=None):
         if not lines:
-            return
+            return None
         Prescription = self.env["pharma.prescription"]
         try:
             with self.env.cr.savepoint():
@@ -832,6 +887,7 @@ class Simulation:
                     "prescription_date": rx_date or fields.Date.today(),
                     "renewal_index": renewal,
                     "dispensing_date": fields.Datetime.now(),
+                    "seller_id": (seller or self.sellers[0]).id,
                     "line_ids": [Command.create(dict({"product_id": p.id, "quantity": q}, **extra))
                                  for p, q, extra in lines],
                 })
@@ -839,13 +895,15 @@ class Simulation:
                 if prescriber:
                     self.dispensed.append(rx.id)
                 self.stats["ordonnances" if prescriber else "ventes_comptoir"] += 1
+                return rx
         except (UserError, ValidationError) as exc:
             self.stats["delivrances_refusees"] += 1
             for product, qty, _extra in lines:
                 self.stock_level[product.id] += qty
                 self.sold_today[product.id] -= qty
-                self.missing(product, qty, patient, "stock", "deferred")
+                self.missing(product, qty, patient, "stock", "deferred", prescriber)
             _logger.debug("Délivrance impossible : %s", exc)
+        return None
 
     def build_chronic_plans(self):
         chronic = [m for m, v in self.molecules.items() if v["profile"] == "chronic"]
@@ -869,11 +927,16 @@ class Simulation:
             })
             plan = self.plans[-1]
             plan["rx_date"] = plan["next"] - timedelta(days=30 * plan["renewal"])
+            # F. Une partie des patients chroniques part chez un confrère en cours de période.
+            if self.rng.random() < 0.07:
+                span = max(21, (self.end - self.start).days)
+                plan["leaves"] = self.start + timedelta(days=self.rng.randint(20, span))
         self.log("Patients chroniques : %s", len(self.plans))
 
     def chronic_dispensing(self, day):
+        visits = []
         for plan in self.plans:
-            if plan["next"] > day:
+            if plan["next"] > day or (plan.get("leaves") and plan["leaves"] <= day):
                 continue
             patient, prescriber = plan["patient"], plan["prescriber"]
             if plan["renewal"] >= 5:
@@ -887,15 +950,17 @@ class Simulation:
             narcotic = any(p.pharma_is_narcotic for p, _q, _e in wanted)
             ald = patient.pharma_exemption == "ald"
             rx_type = "secure" if narcotic else ("bizone" if ald else "standard")
-            self.dispense(patient, prescriber, self.serve_lines(wanted, patient), rx_type,
-                          plan["renewal"], plan["rx_date"])
+            visits.append(lambda p=patient, d=prescriber, w=wanted, t=rx_type, r=plan["renewal"],
+                          x=plan["rx_date"]: self.visit(p, d, w, t, r, x))
             plan["renewal"] += 1
             plan["next"] = day + timedelta(days=self.rng.randint(27, 34))
+        return visits
 
     def acute_dispensing(self, day, count):
         acute = [m for m, v in self.molecules.items() if v["profile"] == "acute"]
         if not acute:
-            return
+            return []
+        visits = []
         weights = [self.molecules[m]["weight"] * (1.3 if day.month >= 10 and m in (
             "amoxicilline", "acide clavulanique", "azithromycine", "paracetamol") else 1)
             for m in acute]
@@ -908,19 +973,22 @@ class Simulation:
                 product, extra = self.substitute(self.pick_presentation(mol), prescriber, patient)
                 wanted.append((product, self.rng.choice([1, 1, 2]), extra))
             narcotic = any(p.pharma_is_narcotic for p, _q, _e in wanted)
-            self.dispense(patient, prescriber, self.serve_lines(wanted, patient),
-                          "secure" if narcotic else "standard")
+            visits.append(lambda p=patient, d=prescriber, w=wanted,
+                          t="secure" if narcotic else "standard": self.visit(p, d, w, t))
+        return visits
 
     def counter_sales(self, count):
         catalog = self.para_products + self.otc_products
         if not catalog:
-            return
+            return []
         products, weights = zip(*catalog, strict=True)
+        visits = []
         for _i in range(count):
             patient = self.walk_in if self.rng.random() < 0.7 else self.rng.choice(self.patients)
             items = set(self.rng.choices(products, weights, k=self.rng.choice([1, 1, 2, 2, 3])))
             wanted = [(p, 1, {}) for p in items]
-            self.dispense(patient, False, self.serve_lines(wanted, patient))
+            visits.append(lambda p=patient, w=wanted: self.visit(p, False, w))
+        return visits
 
     # ------------------------------------------------------------------
     # Opérations quotidiennes
@@ -937,6 +1005,92 @@ class Simulation:
         wizard.quant_ids = quants
         wizard.action_scrap()
         self.stats["lots_detruits"] += len(quants)
+
+    def deliver_promises(self, day):
+        """G. Après la livraison : délivrance des produits promis (« à rendre ») ; au-delà
+        de 5 jours, le patient est allé ailleurs."""
+        promises = self.env["pharma.missing.item"].search([
+            ("company_id", "=", self.company.id), ("state", "=", "open"),
+        ])
+        self.refresh_stock_levels()
+        for item in promises:
+            if (fields.Datetime.now() - item.date).days > 5:
+                item.action_cancel()
+                self.stats["promis_abandonnes"] += 1
+                continue
+            product = item.product_id
+            if self.stock_level[product.id] < item.quantity or not item.patient_id:
+                continue
+            self.stock_level[product.id] -= item.quantity
+            rx = self.dispense(item.patient_id, item.prescriber_id, [(product, int(item.quantity), {})],
+                               "secure" if product.pharma_is_narcotic else "standard",
+                               renewal=1 if item.prescriber_id else 0,
+                               rx_date=fields.Date.to_date(item.date))
+            if rx:
+                item.action_mark_delivered(rx)
+                self.stats["promis_rendus"] += 1
+
+    def health_services(self, day):
+        """C. Missions de santé : TROD angine (plus fréquents à l'automne), campagne de
+        vaccination antigrippale à partir de la mi-octobre, entretiens et bilans."""
+        Types = self.env["pharma.health.service.type"]
+        plan = [
+            ("pharma_fr_services.type_trod_angine", 1.5 if day.month >= 9 else 0.5),
+            ("pharma_fr_services.type_flu_vaccination",
+             10 if (day.month, day.day) >= (10, 14) else 0),
+            ("pharma_fr_services.type_other_vaccination", 0.4),
+            ("pharma_fr_services.type_bpm", 0.15),
+            ("pharma_fr_services.type_aod_interview", 0.35),
+            ("pharma_fr_services.type_pregnancy_interview", 0.1),
+        ]
+        events = []
+        seniors = [p for p in self.patients if p.pharma_age >= 65]
+        for xmlid, rate in plan:
+            service_type = self.env.ref(xmlid, raise_if_not_found=False) or Types.browse()
+            for _i in range(self.poisson(rate * self.activity_factor(day) * SCALE / 2)):
+                pool = seniors if xmlid.endswith(("bpm", "flu_vaccination")) and seniors else self.patients
+                patient = self.rng.choice(pool)
+                events.append(lambda t=service_type, p=patient: self.perform_service(t, p))
+        return events
+
+    def perform_service(self, service_type, patient):
+        if not service_type:
+            return
+        try:
+            with self.env.cr.savepoint():
+                service = self.env["pharma.health.service"].create({
+                    "type_id": service_type.id, "patient_id": patient.id,
+                    "pharmacist_id": self.rng.choice(self.pharmacists).id,
+                    "date": fields.Datetime.now(),
+                })
+                service.action_done()
+                self.stats["missions"] += 1
+        except (UserError, ValidationError) as exc:
+            _logger.warning("Mission impossible : %s", exc)
+
+    def cycle_count(self):
+        """E. Inventaire tournant du lundi : une vingtaine d'articles, surtout en
+        parapharmacie (en libre accès), où apparaît la démarque inconnue."""
+        para_ids = [p.id for p, _w in self.para_products]
+        others = [pid for pid in self.demand if pid not in para_ids]
+        sample = self.rng.sample(para_ids, min(12, len(para_ids))) + self.rng.sample(
+            others, min(8, len(others)))
+        Quant = self.env["stock.quant"].with_context(inventory_mode=True)
+        counted = Quant.browse()
+        for pid in sample:
+            quant = Quant.search([("product_id", "=", pid), ("location_id", "=", self.stock.id),
+                                  ("quantity", ">", 0)], order="quantity desc", limit=1)
+            if not quant:
+                continue
+            if pid in para_ids:
+                gap = -self.rng.choice([1, 1, 2, 3]) if self.rng.random() < 0.30 else 0
+            else:
+                gap = self.rng.choice([-1, 1]) if self.rng.random() < 0.06 else 0
+            quant.inventory_quantity = max(0.0, quant.quantity + gap)
+            counted |= quant
+        if counted:
+            counted.with_context(pharma_gap_reason="cycle_count").action_apply_inventory()
+            self.stats["inventaires_tournants"] += 1
 
     def patient_returns(self):
         if not self.dispensed or self.rng.random() > 0.35:
@@ -1027,45 +1181,66 @@ class Simulation:
         if first_after_10:
             self._wholesalers_paid = (day.year, day.month)
 
+    # Fréquentation horaire (heure locale) : pics de fin de matinée et de fin de journée.
+    HOURLY_WEIGHTS = {8: 0.4, 9: 1.0, 10: 1.2, 11: 1.45, 12: 1.3, 13: 0.6, 14: 0.75, 15: 0.9,
+                      16: 1.05, 17: 1.4, 18: 1.55, 19: 0.6}
+
+    def at_local(self, day, hour, minute=0):
+        """Instant UTC (naïf) correspondant à une heure locale de Paris."""
+        local = pytz.timezone("Europe/Paris").localize(
+            datetime.combine(day, datetime.min.time()) + timedelta(hours=hour, minutes=minute))
+        return local.astimezone(pytz.utc).replace(tzinfo=None)
+
+    def random_slot(self, day):
+        saturday = day.weekday() == 5
+        hours = [h for h in self.HOURLY_WEIGHTS if not (saturday and h < 9)]
+        hour = self.rng.choices(hours, [self.HOURLY_WEIGHTS[h] for h in hours])[0]
+        low = 30 if hour == 8 else 0
+        high = 29 if hour == 19 else 59
+        return hour * 60 + self.rng.randint(low, high)
+
     def simulate_day(self, day, frozen):
         factor = self.activity_factor(day)
         self.emergency, self.emergency_today = {}, set()
         self.sold_today = defaultdict(float)
 
-        frozen.move_to(datetime.combine(day, datetime.min.time()) + timedelta(hours=7))
+        # Ouverture : périmés, réceptions, inventaire tournant, commande du matin
+        frozen.move_to(self.at_local(day, 8, 0))
         self.destroy_expired()
         self.receive_due(day)
+        if day.weekday() == 0:
+            self.cycle_count()
         self.refresh_stock_levels()
-        frozen.move_to(datetime.combine(day, datetime.min.time()) + timedelta(hours=7, minutes=30))
+        frozen.move_to(self.at_local(day, 8, 15))
         self.daily_orders(day)
 
-        # Matinée
-        frozen.move_to(datetime.combine(day, datetime.min.time()) + timedelta(hours=8))
-        self.chronic_dispensing(day)
+        # Passages de la journée, répartis selon la fréquentation horaire
         acute = self.poisson(24 * factor)
         counter = self.poisson(20 * factor * (1.3 if day.weekday() == 5 else 1))
-        self.acute_dispensing(day, acute // 2)
-        self.counter_sales(counter // 2)
+        events = []
+        for action in (self.chronic_dispensing(day) + self.acute_dispensing(day, acute)
+                       + self.counter_sales(counter) + self.health_services(day)):
+            events.append((self.random_slot(day), self.rng.random(), action))
 
-        # Livraison de la mi-journée (grossiste) et dépannages
-        frozen.move_to(datetime.combine(day, datetime.min.time()) + timedelta(hours=11, minutes=30))
-        self.receive_due(day)
-        if self.emergency:
-            order = self.place_order(self.backup_wholesaler, self.emergency, day, "Dépannage")
-            if order:
-                self.stats["depannages"] += 1
-                self.receive_due(day)
-        self.refresh_stock_levels()
+        def midday():
+            # Livraison du grossiste, dépannages, puis délivrance des promis
+            self.receive_due(day)
+            if self.emergency:
+                if self.place_order(self.backup_wholesaler, self.emergency, day, "Dépannage"):
+                    self.stats["depannages"] += 1
+                    self.receive_due(day)
+                self.emergency = {}
+            self.refresh_stock_levels()
+            self.deliver_promises(day)
 
-        # Après-midi
-        frozen.move_to(datetime.combine(day, datetime.min.time()) + timedelta(hours=13))
-        self.acute_dispensing(day, acute - acute // 2)
-        self.counter_sales(counter - counter // 2)
-        frozen.move_to(datetime.combine(day, datetime.min.time()) + timedelta(hours=17))
-        self.patient_returns()
+        events.append((12 * 60 + 15, 0.0, midday))
+        events.append((17 * 60, 0.0, self.patient_returns))
+        for minute, _tie, action in sorted(events, key=lambda e: (e[0], e[1])):
+            frozen.move_to(self.at_local(day, minute // 60, minute % 60))
+            action()
 
-        # Clôture : bordereaux de facturation de la journée
-        frozen.move_to(datetime.combine(day, datetime.min.time()) + timedelta(hours=18, minutes=30))
+        # Clôture : bordereaux, encaissements, photo du stock
+        frozen.move_to(self.at_local(day, 19, 45))
         moves = self.env["pharma.prescription"]._pharma_invoice_pending(until=fields.Datetime.now())
         self.stats["factures"] += len(moves)
         self.settle(day)
@@ -1085,6 +1260,7 @@ class Simulation:
             self.select_assortment()
             self.create_parapharmacy()
             self.create_partners()
+            self.create_team()
             self.setup_purchasing()
             self.popularity = dict(self.demand)
             self.build_chronic_plans()
@@ -1096,6 +1272,7 @@ class Simulation:
                 self.env.cr.commit()
                 if day.day == 1 or day == self.end or day.weekday() == 5:
                     self.log("%s : %s", day, dict(self.stats))
+            self.env["pharma.cash.forecast"]._compute_forecast(on_date=self.today)
         self.env["ir.config_parameter"].sudo().set_param(
             "pharma_fr_demo.generated", fields.Datetime.to_string(fields.Datetime.now()))
         self.env.cr.commit()

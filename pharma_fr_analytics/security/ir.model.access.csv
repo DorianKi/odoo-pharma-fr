@@ -1,3 +1,10 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_pharma_stock_snapshot_user,pharma.stock.snapshot.user,model_pharma_stock_snapshot,pharma_fr_base.group_pharma_user,1,0,0,0
 access_pharma_stock_snapshot_manager,pharma.stock.snapshot.manager,model_pharma_stock_snapshot,pharma_fr_base.group_pharma_manager,1,1,1,1
+access_pharma_inventory_gap_user,pharma.inventory.gap.user,model_pharma_inventory_gap,pharma_fr_base.group_pharma_user,1,0,0,0
+access_pharma_inventory_gap_manager,pharma.inventory.gap.manager,model_pharma_inventory_gap,pharma_fr_base.group_pharma_manager,1,1,1,1
+access_pharma_cash_forecast_manager,pharma.cash.forecast.manager,model_pharma_cash_forecast,pharma_fr_base.group_pharma_manager,1,1,1,1
+access_pharma_patient_loyalty_manager,pharma.patient.loyalty.manager,model_pharma_patient_loyalty,pharma_fr_base.group_pharma_manager,1,0,0,0
+access_pharma_product_performance_manager,pharma.product.performance.manager,model_pharma_product_performance,pharma_fr_base.group_pharma_manager,1,0,0,0
+access_pharma_prescriber_generic_report_manager,pharma.prescriber.generic.report.manager,model_pharma_prescriber_generic_report,pharma_fr_base.group_pharma_manager,1,0,0,0
+access_pharma_seller_report_manager,pharma.seller.report.manager,model_pharma_seller_report,pharma_fr_base.group_pharma_manager,1,0,0,0

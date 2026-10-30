@@ -5,12 +5,19 @@
         <field name="model">pharma.missing.item</field>
         <field name="arch" type="xml">
             <list string="Manquants" editable="top">
+                <header>
+                    <button name="action_mark_delivered" type="object" string="Marquer rendu"/>
+                    <button name="action_cancel" type="object" string="Abandonner"/>
+                </header>
                 <field name="currency_id" column_invisible="1"/>
                 <field name="date"/>
                 <field name="product_id"/>
                 <field name="quantity" sum="Unités"/>
                 <field name="reason"/>
                 <field name="outcome"/>
+                <field name="state" widget="badge" decoration-warning="state == 'open'"
+                       decoration-success="state == 'delivered'" decoration-muted="state in ('cancelled', 'closed')"/>
+                <field name="delay_days" optional="show"/>
                 <field name="patient_id" optional="show"/>
                 <field name="prescription_id" optional="hide"/>
                 <field name="unit_price" optional="hide"/>
@@ -26,6 +33,7 @@
             <search>
                 <field name="product_id"/>
                 <field name="patient_id"/>
+                <filter name="open" string="À rendre" domain="[('state', '=', 'open')]"/>
                 <filter name="lost" string="Ventes perdues" domain="[('outcome', '=', 'lost')]"/>
                 <filter name="national" string="Ruptures nationales" domain="[('reason', '=', 'national_shortage')]"/>
                 <filter name="date" string="Date" date="date"/>

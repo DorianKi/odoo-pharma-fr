@@ -10,6 +10,7 @@
                 <field name="dispensing_date"/>
                 <field name="patient_id"/>
                 <field name="prescriber_id" optional="show"/>
+                <field name="seller_id" optional="show" widget="many2one_avatar_user"/>
                 <field name="prescription_type" optional="hide"/>
                 <field name="amount_total" sum="Total"/>
                 <field name="amount_amo" sum="AMO" optional="show"/>
@@ -54,6 +55,7 @@
                             <field name="prescriber_id" readonly="state != 'draft'"
                                    context="{'default_pharma_partner_type': 'prescriber'}"/>
                             <field name="prescription_type" readonly="state != 'draft'"/>
+                            <field name="seller_id" readonly="state != 'draft'" widget="many2one_avatar_user"/>
                         </group>
                         <group>
                             <field name="prescription_date" readonly="state != 'draft'"/>
@@ -139,7 +141,12 @@
                         domain="[('dispensing_date', '&gt;=', context_today().strftime('%Y-%m-%d'))]"/>
                 <filter name="dispensing_date" string="Date de délivrance" date="dispensing_date"/>
                 <filter name="secure" string="Ordonnances sécurisées" domain="[('prescription_type', '=', 'secure')]"/>
+                <filter name="counter" string="Ventes comptoir" domain="[('is_counter_sale', '=', True)]"/>
+                <filter name="with_rx" string="Sur ordonnance" domain="[('is_counter_sale', '=', False)]"/>
                 <filter name="group_prescriber" string="Prescripteur" context="{'group_by': 'prescriber_id'}"/>
+                <filter name="group_seller" string="Vendeur" context="{'group_by': 'seller_id'}"/>
+                <filter name="group_hour" string="Heure de passage" context="{'group_by': 'dispensing_hour'}"/>
+                <filter name="group_weekday" string="Jour de la semaine" context="{'group_by': 'dispensing_weekday'}"/>
                 <filter name="group_day" string="Jour" context="{'group_by': 'dispensing_date:day'}"/>
             </search>
         </field>

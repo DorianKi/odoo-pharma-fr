@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_pharma_health_service_type_user,pharma.health.service.type.user,model_pharma_health_service_type,pharma_fr_base.group_pharma_user,1,0,0,0
+access_pharma_health_service_type_manager,pharma.health.service.type.manager,model_pharma_health_service_type,pharma_fr_base.group_pharma_manager,1,1,1,1
+access_pharma_health_service_user,pharma.health.service.user,model_pharma_health_service,pharma_fr_base.group_pharma_user,1,1,1,0
+access_pharma_health_service_manager,pharma.health.service.manager,model_pharma_health_service,pharma_fr_base.group_pharma_manager,1,1,1,1
